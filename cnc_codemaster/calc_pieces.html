@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>KIT60G 생산개수 계산기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'Malgun Gothic', sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 12px;
+  font-size: 14px;
+  -webkit-text-size-adjust: none;
+}
+h1 {
+  text-align: center;
+  font-size: 18px;
+  color: #00d4ff;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 8px;
+}
+.input-section {
+  background: #16213e;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.input-section h2 {
+  font-size: 14px;
+  color: #00d4ff;
+  margin-bottom: 10px;
+}
+.input-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.input-row label {
+  flex: 1;
+  font-size: 13px;
+  color: #aaa;
+}
+.input-row input, .input-row select {
+  width: 90px;
+  padding: 8px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #0f3460;
+  color: #fff;
+  font-size: 15px;
+  text-align: center;
+  -webkit-appearance: none;
+}
+.input-row select {
+  width: 120px;
+}
+.input-row .unit {
+  font-size: 12px;
+  color: #666;
+  width: 30px;
+}
+button {
+  width: 100%;
+  padding: 14px;
+  background: #e94560;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+button:active { background: #c73550; }
+
+.result-box {
+  background: #16213e;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.result-box h2 {
+  font-size: 14px;
+  color: #00d4ff;
+  margin-bottom: 8px;
+}
+.dead-zone {
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.dead-zone .total {
+  color: #e94560;
+  font-weight: bold;
+  font-size: 15px;
+}
+.chuck-info {
+  display: flex;
+  justify-content: space-around;
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.chuck-info div {
+  text-align: center;
+}
+.chuck-info .val {
+  font-size: 20px;
+  font-weight: bold;
+  color: #00d4ff;
+}
+.chuck-info .lbl {
+  font-size: 11px;
+  color: #888;
+}
+
+.range-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.range-table th {
+  background: #0f3460;
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 11px;
+  color: #aaa;
+  position: sticky;
+  top: 0;
+}
+.range-table td {
+  padding: 7px 4px;
+  text-align: center;
+  border-bottom: 1px solid #222;
+}
+.range-table tr:nth-child(even) { background: #1a1a2e; }
+.range-table .pcs { color: #00d4ff; font-weight: bold; font-size: 14px; }
+.range-table .al-match { color: #e94560; font-size: 11px; }
+.range-table .highlight { background: #0f3460 !important; }
+
+.quick-calc {
+  background: #0f3460;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.quick-calc h2 {
+  font-size: 14px;
+  color: #00d4ff;
+  margin-bottom: 10px;
+}
+.quick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.quick-row input {
+  width: 80px;
+  padding: 10px;
+  border: 2px solid #e94560;
+  border-radius: 8px;
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 18px;
+  text-align: center;
+}
+.quick-result {
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  margin-top: 8px;
+}
+.quick-result .big {
+  font-size: 36px;
+  font-weight: bold;
+  color: #e94560;
+}
+.quick-result .detail {
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.tab-bar button {
+  flex: 1;
+  padding: 10px;
+  font-size: 13px;
+  background: #16213e;
+  border-radius: 8px;
+  margin: 0;
+}
+.tab-bar button.active {
+  background: #e94560;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<h1>KIT60G 생산개수 계산기</h1>
+
+<!-- 빠른 계산 (상단 고정) -->
+<div class="quick-calc">
+  <h2>빠른 계산</h2>
+  <div class="quick-row">
+    <label style="color:#aaa">#102</label>
+    <select id="q102" onchange="quickCalc()">
+      <option value="0">0</option>
+      <option value="100">100</option>
+      <option value="200">200</option>
+      <option value="300">300</option>
+      <option value="400">400</option>
+      <option value="500" selected>500</option>
+    </select>
+    <label style="color:#aaa">#101</label>
+    <input type="number" id="q101" value="43" min="0" max="99" inputmode="numeric" onchange="quickCalc()" oninput="quickCalc()">
+  </div>
+  <div class="quick-result" id="quickResult">
+    <div class="big">--</div>
+    <div class="detail">위 값을 입력하세요</div>
+  </div>
+</div>
+
+<!-- 탭 -->
+<div class="tab-bar">
+  <button class="active" onclick="switchTab('settings')">설정</button>
+  <button onclick="switchTab('table')">범위표</button>
+  <button onclick="switchTab('deadzone')">데드존</button>
+</div>
+
+<!-- 설정 탭 -->
+<div id="tab-settings" class="tab-content active">
+  <div class="input-section">
+    <h2>제품 설정</h2>
+    <div class="input-row">
+      <label>완성 길이 (#113)</label>
+      <input type="number" id="finLen" value="8.0" step="0.001" inputmode="decimal">
+      <span class="unit">mm</span>
+    </div>
+    <div class="input-row">
+      <label>팁 폭 (#114)</label>
+      <input type="number" id="tipWidth" value="2.0" step="0.01" inputmode="decimal">
+      <span class="unit">mm</span>
+    </div>
+    <div class="input-row">
+      <label>소재 타입 (#105)</label>
+      <select id="matType">
+        <option value="1">1: CN</option>
+        <option value="2">2: RS40</option>
+        <option value="3" selected>3: CM</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="input-section">
+    <h2>장비 설정</h2>
+    <div class="input-row">
+      <label>척 길이 (#103)</label>
+      <input type="number" id="chuckInit" value="75" step="1" inputmode="numeric">
+      <span class="unit">mm</span>
+    </div>
+    <div class="input-row">
+      <label>안전 거리 (#530)</label>
+      <input type="number" id="safetyLen" value="12" step="1" inputmode="numeric">
+      <span class="unit">mm</span>
+    </div>
+    <div class="input-row">
+      <label>척 좌측 한계 (#531)</label>
+      <input type="number" id="chuckLeft" value="15" step="1" inputmode="numeric">
+      <span class="unit">mm</span>
+    </div>
+    <div class="input-row">
+      <label>척투조 거리 (#532)</label>
+      <input type="number" id="chuck2jaw" value="1.03" step="0.01" inputmode="decimal">
+      <span class="unit">mm</span>
+    </div>
+    <div class="input-row">
+      <label>페이스컷 (#104)</label>
+      <input type="number" id="faceCut" value="1" step="0.1" inputmode="decimal">
+      <span class="unit">mm</span>
+    </div>
+    <div class="input-row">
+      <label>마진 (#123)</label>
+      <input type="number" id="margin" value="0.2" step="0.1" inputmode="decimal">
+      <span class="unit">mm</span>
+    </div>
+  </div>
+
+  <button onclick="calculate()">계산하기</button>
+</div>
+
+<!-- 범위표 탭 -->
+<div id="tab-table" class="tab-content">
+  <div class="result-box">
+    <h2 id="tableTitle">계산 결과</h2>
+    <div class="chuck-info" id="chuckInfo"></div>
+    <div style="overflow-x:auto">
+      <table class="range-table" id="rangeTable">
+        <thead><tr><th>소재길이</th><th>총개수</th><th>AL</th><th>잔재</th><th>버림</th></tr></thead>
+        <tbody id="rangeBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 데드존 탭 -->
+<div id="tab-deadzone" class="tab-content">
+  <div class="result-box">
+    <h2>못 쓰는 구간 (데드존)</h2>
+    <div class="dead-zone" id="deadZoneInfo"></div>
+  </div>
+</div>
+
+<script>
+let G = {}; // 전역 계산 결과
+
+function getParams() {
+  const matType = parseInt(document.getElementById('matType').value);
+  return {
+    finLen: parseFloat(document.getElementById('finLen').value),
+    tipWidth: parseFloat(document.getElementById('tipWidth').value),
+    chuckInit: parseFloat(document.getElementById('chuckInit').value),
+    safetyLen: parseFloat(document.getElementById('safetyLen').value),
+    chuckLeft: parseFloat(document.getElementById('chuckLeft').value),
+    chuck2jaw: parseFloat(document.getElementById('chuck2jaw').value),
+    faceCut: parseFloat(document.getElementById('faceCut').value),
+    margin: parseFloat(document.getElementById('margin').value),
+    residual: (matType === 2) ? 15 : 0,
+    matType: matType
+  };
+}
+
+function calcPieces(p, matLen) {
+  const unitW = p.finLen + p.tipWidth;
+  const deadZone = p.chuckLeft + p.chuck2jaw + p.safetyLen;
+  const pcsChuck = Math.floor((p.chuckInit - p.safetyLen) / unitW);
+  const chuckOpt = pcsChuck * unitW + p.safetyLen;
+  const machLen = pcsChuck * unitW;
+  const effMat = matLen - p.residual;
+
+  if (effMat <= chuckOpt) return null;
+
+  let autoPulls = Math.floor(
+    (effMat - p.chuckLeft - p.chuck2jaw - p.safetyLen - machLen - p.tipWidth - p.faceCut)
+    / (machLen + p.tipWidth + p.margin)
+  );
+  if (autoPulls < 0) autoPulls = 0;
+
+  const pcsMain = pcsChuck * (1 + autoPulls);
+  const consumed = (machLen + p.tipWidth + p.faceCut) + autoPulls * (machLen + p.tipWidth + p.margin);
+  const remainRaw = effMat - consumed - deadZone - (p.tipWidth + p.margin);
+  const remainPcs = Math.max(0, Math.floor(remainRaw / unitW));
+  const total = pcsMain + remainPcs;
+
+  let scrap;
+  if (remainPcs > 0) {
+    scrap = remainRaw - (remainPcs * unitW);
+  } else {
+    scrap = Math.max(0, remainRaw);
+  }
+
+  return {
+    total, autoPulls, remainPcs, scrap,
+    pcsChuck, chuckOpt, machLen, unitW, deadZone
+  };
+}
+
+function calculate() {
+  const p = getParams();
+  const unitW = p.finLen + p.tipWidth;
+  const deadZone = p.chuckLeft + p.chuck2jaw + p.safetyLen;
+  const pcsChuck = Math.floor((p.chuckInit - p.safetyLen) / unitW);
+  const chuckOpt = pcsChuck * unitW + p.safetyLen;
+  const effLen = chuckOpt - p.safetyLen;
+
+  G = { p, unitW, deadZone, pcsChuck, chuckOpt, effLen };
+
+  // 척 정보
+  const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS', 'CM'][p.matType] || '기타';
+  document.getElementById('chuckInfo').innerHTML = `
+    <div><div class="val">${pcsChuck}</div><div class="lbl">척당 개수</div></div>
+    <div><div class="val">${chuckOpt}</div><div class="lbl">최적 척길이</div></div>
+    <div><div class="val">${unitW}</div><div class="lbl">단위폭(mm)</div></div>
+    <div><div class="val">${matName}</div><div class="lbl">소재</div></div>
+  `;
+  document.getElementById('tableTitle').textContent = `#102 기준 범위표 (${matName}, ${unitW}mm 피치)`;
+
+  // 범위표 생성 - #102별로
+  const tbody = document.getElementById('rangeBody');
+  tbody.innerHTML = '';
+
+  [0, 100, 200, 300, 400, 500].forEach(v102 => {
+    // 헤더 행
+    const hdr = document.createElement('tr');
+    hdr.innerHTML = `<td colspan="5" style="background:#0f3460;color:#e94560;font-weight:bold;text-align:left;padding:10px">#102 = ${v102}</td>`;
+    tbody.appendChild(hdr);
+
+    let prevTotal = -1, groupStart = null, prevV101 = 0;
+    let prevAuto = 0, prevRemain = 0, prevScrap = 0;
+    const groups = [];
+
+    for (let v101 = 0; v101 < 100; v101++) {
+      const matLen = v102 + v101;
+      const r = calcPieces(p, matLen);
+      if (!r) continue;
+
+      if (r.total !== prevTotal) {
+        if (groupStart !== null) {
+          groups.push({ s: groupStart, e: prevV101, total: prevTotal, auto: prevAuto, remain: prevRemain, scrap: prevScrap });
+        }
+        groupStart = v101;
+        prevTotal = r.total;
+      }
+      prevV101 = v101;
+      prevAuto = r.autoPulls;
+      prevRemain = r.remainPcs;
+      prevScrap = r.scrap;
+    }
+    if (groupStart !== null) {
+      groups.push({ s: groupStart, e: prevV101, total: prevTotal, auto: prevAuto, remain: prevRemain, scrap: prevScrap });
+    }
+
+    groups.forEach(g => {
+      const isAlMatch = g.remain === 0 && g.auto > 0;
+      const tr = document.createElement('tr');
+      if (isAlMatch) tr.classList.add('highlight');
+      tr.innerHTML = `
+        <td>${v102+g.s}~${v102+g.e}mm<br><span style="color:#666;font-size:10px">#101=${g.s}~${g.e}</span></td>
+        <td class="pcs">${g.total}</td>
+        <td>${g.auto}</td>
+        <td>${g.remain}</td>
+        <td>${g.scrap.toFixed(1)}mm${isAlMatch ? '<br><span class="al-match">AL 딱맞음</span>' : ''}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+
+  // 데드존 정보
+  let dzHtml = `
+    척 좌측 한계(#531): <b>${p.chuckLeft}mm</b><br>
+    척~조 거리(#532): <b>${p.chuck2jaw}mm</b><br>
+    안전 거리(#530): <b>${p.safetyLen}mm</b><br>
+  `;
+  if (p.residual > 0) {
+    dzHtml += `잔재 안전값(#129): <b>${p.residual}mm</b> ← RS40<br>`;
+  }
+  dzHtml += `<hr style="border-color:#333;margin:8px 0">`;
+  dzHtml += `<span class="total">합계: ${deadZone + p.residual}mm 못 씀</span><br><br>`;
+  dzHtml += `+ 페이스컷(#104): ${p.faceCut}mm (첫 가공)<br>`;
+  dzHtml += `+ 마진(#123): ${p.margin}mm (오토링크마다)<br>`;
+  dzHtml += `+ 팁폭(#114): ${p.tipWidth}mm (잔재 인출 시)`;
+  document.getElementById('deadZoneInfo').innerHTML = dzHtml;
+
+  // 빠른 계산도 갱신
+  quickCalc();
+
+  // 자동으로 범위표 탭으로 이동
+  switchTab('table');
+}
+
+function quickCalc() {
+  const p = getParams();
+  const v102 = parseInt(document.getElementById('q102').value);
+  const v101 = parseInt(document.getElementById('q101').value) || 0;
+  const matLen = v102 + v101;
+
+  const r = calcPieces(p, matLen);
+  const el = document.getElementById('quickResult');
+
+  if (!r) {
+    el.innerHTML = `<div class="big">--</div><div class="detail">소재 길이 부족 (최소 ${Math.ceil(p.chuckInit)}mm 이상)</div>`;
+    return;
+  }
+
+  const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS', 'CM'][p.matType] || '기타';
+  el.innerHTML = `
+    <div class="big">${r.total}개</div>
+    <div class="detail">
+      소재 ${matLen}mm (${matName}) | 오토링크 ${r.autoPulls}회 | 잔재 ${r.remainPcs}개 | 버림 ${r.scrap.toFixed(1)}mm
+    </div>
+  `;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-bar button').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const tabs = ['settings', 'table', 'deadzone'];
+  document.querySelectorAll('.tab-bar button')[tabs.indexOf(name)].classList.add('active');
+}
+
+// 초기 계산
+window.onload = function() {
+  calculate();
+  switchTab('settings');
+};
+</script>
+</body>
+</html>
