@@ -546,7 +546,7 @@ function renderViz() {
     return;
   }
 
-  const deadTotal = p.deadZone + p.residual;
+  const deadTotal = r.deadZone + p.residual;
   const W   = Math.max(barEl.clientWidth || 300, 200);
   const sc  = (W - 2) / matLen;   // px per mm
   const BH  = 48;
@@ -728,7 +728,7 @@ let AN = { segs: [], maxStep: 0, current: 0, timerId: null, matLen: 0, p: null }
 
 function buildAnimSegs(p, matLen, r) {
   const segs = [];
-  const dead = p.deadZone + p.residual;
+  const dead = r.deadZone + p.residual;
   let step = 0;
 
   const push = (x, w, c, ev, isEv) => segs.push({ step, x, w, c, event: ev || '', isEvent: !!isEv });
@@ -828,7 +828,7 @@ function animDrawFrame() {
   const W      = Math.max(document.getElementById('animCanvas').clientWidth || 300, 200);
   const sc     = (W - 2) / matLen;
   const BH     = 48;
-  const dead   = p.deadZone + p.residual;
+  const dead   = (p.chuckLeft + p.chuck2jaw + p.safetyLen) + p.residual;
 
   const visible = AN.segs.filter(s => !s.isEvent && s.step <= cur && s.w > 0.01);
 
