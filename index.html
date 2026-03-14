@@ -599,8 +599,7 @@ function renderViz() {
       push(lp + p.tipWidth, p.finLen,   '#0984e3', '');
       lp += r.unitW;
     }
-    push(lp,               p.tipWidth, '#e17055', '');  // 파팅 #114 (잔재 오른쪽)
-    push(lp + p.tipWidth,  p.margin,   '#fdcb6e', '');  // 마진 #123 (잔재 오른쪽)
+    push(lp, p.tipWidth + p.margin, '#fdcb6e', '');  // AL갭 #114+#123 (잔재 오른쪽)
     lp += p.tipWidth + p.margin;
   }
 
@@ -812,8 +811,7 @@ function buildAnimSegs(p, matLen, r) {
     }
 
     step++;
-    push(lp,              p.tipWidth, '#e17055', '잔재 구분 파팅 #114');
-    push(lp + p.tipWidth, p.margin,   '#fdcb6e', '잔재 마진 #123');
+    push(lp, p.tipWidth + p.margin, '#fdcb6e', 'AL갭 #114+#123');
     lp += p.tipWidth + p.margin;
   }
 
