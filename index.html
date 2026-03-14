@@ -982,13 +982,17 @@ function calculate() {
 
   const deadZoneVal = deadZone + p.residual;
   let dzHtml = `
-    척 좌측 한계(#531): <b>${p.chuckLeft}mm</b><br>
-    척~조 거리(#532): <b>${p.chuck2jaw}mm</b><br>
-    안전 거리(#530): <b>${p.safetyLen}mm</b><br>
+    <b style="color:#aaa">조(jaw)가 물고 있는 구간:</b><br>
+    &nbsp;&nbsp;스크랩 (가공 후 자투리)<br>
+    &nbsp;&nbsp;+ 최소물림(#531): <b>${p.chuckLeft}mm</b> ← 조가 최소한 이만큼 물어야 함<br>
+    <br>
+    <b style="color:#aaa">조 바깥쪽 (물고 있지 않음):</b><br>
+    &nbsp;&nbsp;안전거리(#530): <b>${p.safetyLen}mm</b> ← 충돌 방지 여유<br>
+    &nbsp;&nbsp;척투조거리(#532): <b>${p.chuck2jaw}mm</b> ← 척 본체~조 사이<br>
   `;
-  if (p.residual > 0) dzHtml += `잔재 안전값(#129): <b>${p.residual}mm</b> ← RS40<br>`;
+  if (p.residual > 0) dzHtml += `<br>잔재 안전값(#129): <b>${p.residual}mm</b> ← RS40 추가<br>`;
   dzHtml += `<hr style="border-color:#333;margin:8px 0">`;
-  dzHtml += `<span class="total">합계: ${deadZoneVal}mm 못 씀</span><br><br>`;
+  dzHtml += `<span class="total">데드존 합계: ${deadZoneVal}mm 못 씀</span><br><br>`;
   dzHtml += `+ 페이스컷(#104): ${p.faceCut}mm (첫 가공)<br>`;
   dzHtml += `+ 마진(#123): ${p.margin}mm (오토링크마다)<br>`;
   dzHtml += `+ 팁폭(#114): ${p.tipWidth}mm (잔재 인출 시)`;
