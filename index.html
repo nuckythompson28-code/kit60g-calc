@@ -599,7 +599,8 @@ function renderViz() {
       push(lp + p.tipWidth, p.finLen,   '#0984e3', '');
       lp += r.unitW;
     }
-    push(lp, p.margin, '#fdcb6e', '');  // AL마진 #123
+    push(lp,            p.margin,   '#fdcb6e', '');  // AL마진 #123
+    push(lp + p.margin, p.tipWidth, '#636e72', '');  // #114 위치구분
     lp += p.tipWidth + p.margin;
   }
 
@@ -811,7 +812,8 @@ function buildAnimSegs(p, matLen, r) {
     }
 
     step++;
-    push(lp, p.margin, '#fdcb6e', 'AL마진 #123');
+    push(lp,            p.margin,   '#fdcb6e', 'AL마진 #123');
+    push(lp + p.margin, p.tipWidth, '#636e72', '#114 위치구분');
     lp += p.tipWidth + p.margin;
   }
 
