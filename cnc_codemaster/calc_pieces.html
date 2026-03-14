@@ -594,15 +594,14 @@ function renderViz() {
   let lp = r.scrap + deadTotal;  // 가공 가능한 좌측 경계
 
   if (r.remainPcs > 0) {
-    push(lp,               p.tipWidth, '#e17055', '');  // 파팅 #114
-    push(lp + p.tipWidth,  p.margin,   '#fdcb6e', '');  // 마진 #123
-    lp += p.tipWidth + p.margin;
-
     for (let j = r.remainPcs - 1; j >= 0; j--) {
       push(lp,              p.tipWidth, '#e17055', '');
       push(lp + p.tipWidth, p.finLen,   '#0984e3', '');
       lp += r.unitW;
     }
+    push(lp,               p.tipWidth, '#e17055', '');  // 파팅 #114 (잔재 오른쪽)
+    push(lp + p.tipWidth,  p.margin,   '#fdcb6e', '');  // 마진 #123 (잔재 오른쪽)
+    lp += p.tipWidth + p.margin;
   }
 
   /* SVG 그리기 */
@@ -804,11 +803,6 @@ function buildAnimSegs(p, matLen, r) {
     step++;
     push(0, 0, 'none', '🔄 잔재 인출 (O9003)', true);
 
-    step++;
-    push(lp,              p.tipWidth, '#e17055', '잔재 구분 파팅 #114');
-    push(lp + p.tipWidth, p.margin,   '#fdcb6e', '잔재 마진 #123');
-    lp += p.tipWidth + p.margin;
-
     for (let j = r.remainPcs - 1; j >= 0; j--) {
       step++;
       const pn = (1 + r.autoPulls) * r.pcsChuck + (r.remainPcs - j);
@@ -816,6 +810,11 @@ function buildAnimSegs(p, matLen, r) {
       push(lp + p.tipWidth, p.finLen,   '#0984e3', `잔재 #${pn} 완료 ✓`);
       lp += r.unitW;
     }
+
+    step++;
+    push(lp,              p.tipWidth, '#e17055', '잔재 구분 파팅 #114');
+    push(lp + p.tipWidth, p.margin,   '#fdcb6e', '잔재 마진 #123');
+    lp += p.tipWidth + p.margin;
   }
 
   // 완료 이벤트
