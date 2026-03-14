@@ -55,9 +55,7 @@ h1 {
   text-align: center;
   -webkit-appearance: none;
 }
-.input-row select {
-  width: 120px;
-}
+.input-row select { width: 120px; }
 .input-row .unit {
   font-size: 12px;
   color: #666;
@@ -76,7 +74,6 @@ button {
   margin-bottom: 12px;
 }
 button:active { background: #c73550; }
-
 .result-box {
   background: #16213e;
   border-radius: 10px;
@@ -109,19 +106,9 @@ button:active { background: #c73550; }
   padding: 10px;
   margin-bottom: 8px;
 }
-.chuck-info div {
-  text-align: center;
-}
-.chuck-info .val {
-  font-size: 20px;
-  font-weight: bold;
-  color: #00d4ff;
-}
-.chuck-info .lbl {
-  font-size: 11px;
-  color: #888;
-}
-
+.chuck-info div { text-align: center; }
+.chuck-info .val { font-size: 20px; font-weight: bold; color: #00d4ff; }
+.chuck-info .lbl { font-size: 11px; color: #888; }
 .range-table {
   width: 100%;
   border-collapse: collapse;
@@ -145,18 +132,13 @@ button:active { background: #c73550; }
 .range-table .pcs { color: #00d4ff; font-weight: bold; font-size: 14px; }
 .range-table .al-match { color: #e94560; font-size: 11px; }
 .range-table .highlight { background: #0f3460 !important; }
-
 .quick-calc {
   background: #0f3460;
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 12px;
 }
-.quick-calc h2 {
-  font-size: 14px;
-  color: #00d4ff;
-  margin-bottom: 10px;
-}
+.quick-calc h2 { font-size: 14px; color: #00d4ff; margin-bottom: 10px; }
 .quick-row {
   display: flex;
   align-items: center;
@@ -180,16 +162,8 @@ button:active { background: #c73550; }
   text-align: center;
   margin-top: 8px;
 }
-.quick-result .big {
-  font-size: 36px;
-  font-weight: bold;
-  color: #e94560;
-}
-.quick-result .detail {
-  font-size: 12px;
-  color: #888;
-  margin-top: 4px;
-}
+.quick-result .big { font-size: 36px; font-weight: bold; color: #e94560; }
+.quick-result .detail { font-size: 12px; color: #888; margin-top: 4px; }
 .tab-bar {
   display: flex;
   gap: 4px;
@@ -197,24 +171,69 @@ button:active { background: #c73550; }
 }
 .tab-bar button {
   flex: 1;
-  padding: 10px;
-  font-size: 13px;
+  padding: 10px 4px;
+  font-size: 12px;
   background: #16213e;
   border-radius: 8px;
   margin: 0;
 }
-.tab-bar button.active {
-  background: #e94560;
-}
+.tab-bar button.active { background: #e94560; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
+
+/* ===== 시각화 탭 ===== */
+.viz-bar-wrap {
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  margin-top: 10px;
+  line-height: 1.8;
+}
+.viz-legend span b {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+.viz-stats {
+  font-size: 13px;
+  margin-top: 6px;
+  line-height: 1.8;
+  color: #aaa;
+}
+.viz-cycle-wrap {
+  margin-top: 14px;
+}
+.viz-cycle-wrap h3 {
+  font-size: 13px;
+  color: #00d4ff;
+  margin-bottom: 8px;
+}
+.cycle-row {
+  margin-bottom: 8px;
+}
+.cycle-label {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 3px;
+}
+.cycle-label.remain { color: #0984e3; }
 </style>
 </head>
 <body>
 
 <h1>KIT60G 생산개수 계산기</h1>
 
-<!-- 빠른 계산 (상단 고정) -->
+<!-- 빠른 계산 -->
 <div class="quick-calc">
   <h2>빠른 계산</h2>
   <div class="quick-row">
@@ -241,6 +260,7 @@ button:active { background: #c73550; }
   <button class="active" onclick="switchTab('settings')">설정</button>
   <button onclick="switchTab('table')">범위표</button>
   <button onclick="switchTab('deadzone')">데드존</button>
+  <button onclick="switchTab('viz')">시각화</button>
 </div>
 
 <!-- 설정 탭 -->
@@ -326,32 +346,59 @@ button:active { background: #c73550; }
   </div>
 </div>
 
+<!-- 시각화 탭 -->
+<div id="tab-viz" class="tab-content">
+  <div class="result-box">
+    <h2 id="vizTitle">소재 배치 시각화</h2>
+
+    <div class="viz-bar-wrap">
+      <div id="vizBar"></div>
+      <div class="viz-legend">
+        <span><b style="background:#00b894"></b>제품(메인)</span>
+        <span><b style="background:#0984e3"></b>잔재</span>
+        <span><b style="background:#e17055"></b>파팅</span>
+        <span><b style="background:#fdcb6e"></b>마진/구분</span>
+        <span><b style="background:#6c5ce7"></b>페이스컷</span>
+        <span><b style="background:#636e72"></b>구분자</span>
+        <span><b style="background:#d63031"></b>스크랩</span>
+        <span><b style="background:#2d3436;border:1px solid #555"></b>데드존</span>
+      </div>
+      <div class="viz-stats" id="vizStats"></div>
+    </div>
+
+    <div class="viz-cycle-wrap">
+      <h3>사이클별 상세</h3>
+      <div id="vizCycles"></div>
+    </div>
+  </div>
+</div>
+
 <script>
-let G = {}; // 전역 계산 결과
+let G = {};
 
 function getParams() {
   const matType = parseInt(document.getElementById('matType').value);
   return {
-    finLen: parseFloat(document.getElementById('finLen').value),
-    tipWidth: parseFloat(document.getElementById('tipWidth').value),
+    finLen:    parseFloat(document.getElementById('finLen').value),
+    tipWidth:  parseFloat(document.getElementById('tipWidth').value),
     chuckInit: parseFloat(document.getElementById('chuckInit').value),
     safetyLen: parseFloat(document.getElementById('safetyLen').value),
     chuckLeft: parseFloat(document.getElementById('chuckLeft').value),
     chuck2jaw: parseFloat(document.getElementById('chuck2jaw').value),
-    faceCut: parseFloat(document.getElementById('faceCut').value),
-    margin: parseFloat(document.getElementById('margin').value),
-    residual: (matType === 2) ? 15 : 0,
-    matType: matType
+    faceCut:   parseFloat(document.getElementById('faceCut').value),
+    margin:    parseFloat(document.getElementById('margin').value),
+    residual:  (matType === 2) ? 15 : 0,
+    matType:   matType
   };
 }
 
 function calcPieces(p, matLen) {
-  const unitW = p.finLen + p.tipWidth;
+  const unitW   = p.finLen + p.tipWidth;
   const deadZone = p.chuckLeft + p.chuck2jaw + p.safetyLen;
   const pcsChuck = Math.floor((p.chuckInit - p.safetyLen) / unitW);
   const chuckOpt = pcsChuck * unitW + p.safetyLen;
-  const machLen = pcsChuck * unitW;
-  const effMat = matLen - p.residual;
+  const machLen  = pcsChuck * unitW;
+  const effMat   = matLen - p.residual;
 
   if (effMat <= chuckOpt) return null;
 
@@ -361,15 +408,15 @@ function calcPieces(p, matLen) {
   );
   if (autoPulls < 0) autoPulls = 0;
 
-  const pcsMain = pcsChuck * (1 + autoPulls);
-  const consumed = (machLen + p.tipWidth + p.faceCut) + autoPulls * (machLen + p.tipWidth + p.margin);
+  const pcsMain   = pcsChuck * (1 + autoPulls);
+  const consumed  = (machLen + p.tipWidth + p.faceCut) + autoPulls * (machLen + p.tipWidth + p.margin);
   const remainRaw = effMat - consumed - deadZone - (p.tipWidth + p.margin);
   const remainPcs = Math.max(0, Math.floor(remainRaw / unitW));
-  const total = pcsMain + remainPcs;
+  const total     = pcsMain + remainPcs;
 
   let scrap;
   if (remainPcs > 0) {
-    scrap = remainRaw - (remainPcs * unitW);
+    scrap = remainRaw - remainPcs * unitW;
   } else {
     scrap = Math.max(0, remainRaw);
   }
@@ -380,32 +427,227 @@ function calcPieces(p, matLen) {
   };
 }
 
+/* ─────────────────────────────────────────────
+   시각화
+───────────────────────────────────────────── */
+function renderViz() {
+  const p = G.p || getParams();
+  const v102  = parseInt(document.getElementById('q102').value);
+  const v101  = parseInt(document.getElementById('q101').value) || 0;
+  const matLen = v102 + v101;
+  const r = calcPieces(p, matLen);
+
+  const barEl    = document.getElementById('vizBar');
+  const statsEl  = document.getElementById('vizStats');
+  const cyclesEl = document.getElementById('vizCycles');
+  document.getElementById('vizTitle').textContent =
+    `소재 배치 시각화 — ${matLen}mm`;
+
+  if (!r) {
+    barEl.innerHTML = '<p style="color:#e94560;text-align:center;padding:16px">소재 길이 부족</p>';
+    statsEl.innerHTML = '';
+    cyclesEl.innerHTML = '';
+    return;
+  }
+
+  const deadTotal = p.deadZone + p.residual;
+  const W   = Math.max(barEl.clientWidth || 300, 200);
+  const sc  = (W - 2) / matLen;   // px per mm
+  const BH  = 48;
+
+  /* 세그먼트 수집 */
+  const segs = [];
+  const push = (x, w, c, lbl) => { if (w > 0.01) segs.push({x, w, c, lbl: lbl || ''}); };
+
+  /* ── 오른쪽(face)부터 계산 ── */
+  let rp = matLen;
+
+  // 페이스컷
+  push(rp - p.faceCut, p.faceCut, '#6c5ce7', 'F');
+  rp -= p.faceCut;
+
+  // 초기 사이클 피스
+  for (let j = 0; j < r.pcsChuck; j++) {
+    push(rp - (j + 1) * r.unitW,              p.tipWidth, '#e17055', '');
+    push(rp - (j + 1) * r.unitW + p.tipWidth, p.finLen,   '#00b894', '');
+  }
+  rp -= r.pcsChuck * r.unitW;
+
+  // 초기 사이클 꼬리 구분자
+  push(rp - p.tipWidth, p.tipWidth, '#636e72', '');
+  rp -= p.tipWidth;
+
+  // AL 사이클들
+  for (let i = 0; i < r.autoPulls; i++) {
+    push(rp - p.margin, p.margin, '#fdcb6e', '');
+    rp -= p.margin;
+
+    for (let j = 0; j < r.pcsChuck; j++) {
+      push(rp - (j + 1) * r.unitW,              p.tipWidth, '#e17055', '');
+      push(rp - (j + 1) * r.unitW + p.tipWidth, p.finLen,   '#00b894', '');
+    }
+    rp -= r.pcsChuck * r.unitW;
+
+    push(rp - p.tipWidth, p.tipWidth, '#636e72', '');
+    rp -= p.tipWidth;
+  }
+
+  /* ── 왼쪽(tail)부터 계산 ── */
+  let lp = deadTotal;
+
+  if (r.remainPcs > 0) {
+    push(lp, p.tipWidth + p.margin, '#fdcb6e', '');
+    lp += p.tipWidth + p.margin;
+
+    // 잔재 피스 (왼쪽=꼬리 방향 순서로)
+    for (let j = r.remainPcs - 1; j >= 0; j--) {
+      push(lp,              p.tipWidth, '#e17055', '');
+      push(lp + p.tipWidth, p.finLen,   '#0984e3', '');
+      lp += r.unitW;
+    }
+  }
+
+  // 스크랩
+  if (rp > lp + 0.05) {
+    push(lp, rp - lp, '#d63031', r.scrap > 3 ? '스크랩' : '');
+  }
+
+  // 데드존 (제일 마지막 → 위에 덮이도록)
+  push(0, deadTotal, '#2d3436', deadTotal > 20 ? '데드존' : '');
+
+  /* SVG 그리기 */
+  segs.sort((a, b) => a.x - b.x);
+
+  let svgInner = '';
+  segs.forEach(s => {
+    const px = (1 + s.x * sc).toFixed(1);
+    const pw = Math.max(s.w * sc, 0.5).toFixed(1);
+    svgInner += `<rect x="${px}" y="0" width="${pw}" height="${BH}" fill="${s.c}" stroke="#0a0a1a" stroke-width="0.2"/>`;
+    if (parseFloat(pw) > 14 && s.lbl) {
+      const fs = Math.min(9, parseFloat(pw) * 0.38);
+      const cx = (parseFloat(px) + parseFloat(pw) / 2).toFixed(1);
+      svgInner += `<text x="${cx}" y="${BH / 2 + 4}" text-anchor="middle" fill="#fff" font-size="${fs}" font-weight="bold">${s.lbl}</text>`;
+    }
+  });
+
+  // 데드존 경계선
+  const dzX = (1 + deadTotal * sc).toFixed(1);
+  svgInner += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#fff" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>`;
+
+  // tail / face 레이블
+  svgInner += `<text x="3" y="${BH - 5}" fill="#555" font-size="8">tail</text>`;
+  svgInner += `<text x="${W - 28}" y="${BH - 5}" fill="#555" font-size="8">face</text>`;
+
+  barEl.innerHTML =
+    `<svg width="${W}" height="${BH}" style="display:block;border-radius:6px;overflow:hidden;border:1px solid #333">${svgInner}</svg>
+     <div style="display:flex;justify-content:space-between;font-size:10px;color:#555;margin:2px 0 0">
+       <span>0</span><span>${matLen}mm</span>
+     </div>`;
+
+  /* 통계 */
+  const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS40', 'CM'][p.matType];
+  statsEl.innerHTML = `
+    <div style="margin-top:4px">
+      <b style="color:#00b894">제품 ${r.total - r.remainPcs}개</b> (메인) +
+      <b style="color:#0984e3">${r.remainPcs}개</b> (잔재) =
+      <b style="color:#fff">${r.total}개</b> 합계
+    </div>
+    <div style="font-size:12px;color:#888;margin-top:2px">
+      오토링크 ${r.autoPulls}회 | 척당 ${r.pcsChuck}개 | 피치 ${r.unitW}mm |
+      스크랩 ${r.scrap.toFixed(1)}mm | 데드존 ${deadTotal.toFixed(1)}mm
+    </div>`;
+
+  /* 사이클 상세 */
+  const totalCycles = 1 + r.autoPulls;
+  const CW    = W - 4;
+  const slotW = CW / r.pcsChuck;
+  const CH    = 20;
+
+  let cycleHTML = '';
+
+  for (let i = 0; i < totalCycles; i++) {
+    const label   = i === 0 ? '초기 척킹' : `AL ${i}회차`;
+    const pStart  = i * r.pcsChuck + 1;
+    const pEnd    = (i + 1) * r.pcsChuck;
+
+    let bars = '';
+    for (let j = 0; j < r.pcsChuck; j++) {
+      const bx  = (j * slotW + 1).toFixed(1);
+      const pw  = Math.max((slotW * p.finLen / r.unitW) - 1, 1).toFixed(1);
+      const ptw = Math.max(slotW * p.tipWidth / r.unitW - 0.5, 0.5).toFixed(1);
+      const ptx = (parseFloat(bx) + parseFloat(pw) + 0.5).toFixed(1);
+      bars += `<rect x="${bx}"  y="1" width="${pw}"  height="${CH - 2}" fill="#00b894" rx="2"/>`;
+      bars += `<rect x="${ptx}" y="1" width="${ptw}" height="${CH - 2}" fill="#e17055" rx="1"/>`;
+      if (parseFloat(pw) > 16) {
+        const tx = (parseFloat(bx) + parseFloat(pw) / 2).toFixed(1);
+        bars += `<text x="${tx}" y="${CH / 2 + 4}" text-anchor="middle" fill="#fff" font-size="8">${pStart + j}</text>`;
+      }
+    }
+
+    cycleHTML += `
+      <div class="cycle-row">
+        <div class="cycle-label">${label} — #${pStart}~${pEnd} (${r.pcsChuck}개)</div>
+        <svg width="${CW}" height="${CH}" style="display:block;background:#0a0a1a;border-radius:4px">${bars}</svg>
+      </div>`;
+  }
+
+  if (r.remainPcs > 0) {
+    const rStart = totalCycles * r.pcsChuck + 1;
+    const rEnd   = totalCycles * r.pcsChuck + r.remainPcs;
+    const rW     = Math.min(CW, Math.ceil(r.remainPcs * slotW + 2));
+
+    let bars = '';
+    for (let j = 0; j < r.remainPcs; j++) {
+      const bx  = (j * slotW + 1).toFixed(1);
+      const pw  = Math.max((slotW * p.finLen / r.unitW) - 1, 1).toFixed(1);
+      const ptw = Math.max(slotW * p.tipWidth / r.unitW - 0.5, 0.5).toFixed(1);
+      const ptx = (parseFloat(bx) + parseFloat(pw) + 0.5).toFixed(1);
+      bars += `<rect x="${bx}"  y="1" width="${pw}"  height="${CH - 2}" fill="#0984e3" rx="2"/>`;
+      bars += `<rect x="${ptx}" y="1" width="${ptw}" height="${CH - 2}" fill="#e17055" rx="1"/>`;
+      if (parseFloat(pw) > 16) {
+        const tx = (parseFloat(bx) + parseFloat(pw) / 2).toFixed(1);
+        bars += `<text x="${tx}" y="${CH / 2 + 4}" text-anchor="middle" fill="#fff" font-size="8">${rStart + j}</text>`;
+      }
+    }
+
+    cycleHTML += `
+      <div class="cycle-row">
+        <div class="cycle-label remain">잔재 인출 (O9003) — #${rStart}~${rEnd} (${r.remainPcs}개)</div>
+        <svg width="${rW}" height="${CH}" style="display:block;background:#0a0a1a;border-radius:4px">${bars}</svg>
+      </div>`;
+  }
+
+  if (!cycleHTML) cycleHTML = '<p style="color:#555;font-size:12px">사이클 없음</p>';
+  cyclesEl.innerHTML = cycleHTML;
+}
+
+/* ─────────────────────────────────────────────
+   기존 로직
+───────────────────────────────────────────── */
 function calculate() {
   const p = getParams();
-  const unitW = p.finLen + p.tipWidth;
+  const unitW    = p.finLen + p.tipWidth;
   const deadZone = p.chuckLeft + p.chuck2jaw + p.safetyLen;
   const pcsChuck = Math.floor((p.chuckInit - p.safetyLen) / unitW);
   const chuckOpt = pcsChuck * unitW + p.safetyLen;
-  const effLen = chuckOpt - p.safetyLen;
+  const effLen   = chuckOpt - p.safetyLen;
 
   G = { p, unitW, deadZone, pcsChuck, chuckOpt, effLen };
 
-  // 척 정보
-  const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS', 'CM'][p.matType] || '기타';
+  const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS40', 'CM'][p.matType] || '기타';
   document.getElementById('chuckInfo').innerHTML = `
     <div><div class="val">${pcsChuck}</div><div class="lbl">척당 개수</div></div>
     <div><div class="val">${chuckOpt}</div><div class="lbl">최적 척길이</div></div>
     <div><div class="val">${unitW}</div><div class="lbl">단위폭(mm)</div></div>
     <div><div class="val">${matName}</div><div class="lbl">소재</div></div>
   `;
-  document.getElementById('tableTitle').textContent = `#102 기준 범위표 (${matName}, ${unitW}mm 피치)`;
+  document.getElementById('tableTitle').textContent =
+    `#102 기준 범위표 (${matName}, ${unitW}mm 피치)`;
 
-  // 범위표 생성 - #102별로
   const tbody = document.getElementById('rangeBody');
   tbody.innerHTML = '';
 
   [0, 100, 200, 300, 400, 500].forEach(v102 => {
-    // 헤더 행
     const hdr = document.createElement('tr');
     hdr.innerHTML = `<td colspan="5" style="background:#0f3460;color:#e94560;font-weight:bold;text-align:left;padding:10px">#102 = ${v102}</td>`;
     tbody.appendChild(hdr);
@@ -420,27 +662,25 @@ function calculate() {
       if (!r) continue;
 
       if (r.total !== prevTotal) {
-        if (groupStart !== null) {
+        if (groupStart !== null)
           groups.push({ s: groupStart, e: prevV101, total: prevTotal, auto: prevAuto, remain: prevRemain, scrap: prevScrap });
-        }
         groupStart = v101;
-        prevTotal = r.total;
+        prevTotal  = r.total;
       }
-      prevV101 = v101;
-      prevAuto = r.autoPulls;
+      prevV101  = v101;
+      prevAuto  = r.autoPulls;
       prevRemain = r.remainPcs;
-      prevScrap = r.scrap;
+      prevScrap  = r.scrap;
     }
-    if (groupStart !== null) {
+    if (groupStart !== null)
       groups.push({ s: groupStart, e: prevV101, total: prevTotal, auto: prevAuto, remain: prevRemain, scrap: prevScrap });
-    }
 
     groups.forEach(g => {
       const isAlMatch = g.remain === 0 && g.auto > 0;
       const tr = document.createElement('tr');
       if (isAlMatch) tr.classList.add('highlight');
       tr.innerHTML = `
-        <td>${v102+g.s}~${v102+g.e}mm<br><span style="color:#666;font-size:10px">#101=${g.s}~${g.e}</span></td>
+        <td>${v102 + g.s}~${v102 + g.e}mm<br><span style="color:#666;font-size:10px">#101=${g.s}~${g.e}</span></td>
         <td class="pcs">${g.total}</td>
         <td>${g.auto}</td>
         <td>${g.remain}</td>
@@ -450,62 +690,60 @@ function calculate() {
     });
   });
 
-  // 데드존 정보
+  const deadZoneVal = deadZone + p.residual;
   let dzHtml = `
     척 좌측 한계(#531): <b>${p.chuckLeft}mm</b><br>
     척~조 거리(#532): <b>${p.chuck2jaw}mm</b><br>
     안전 거리(#530): <b>${p.safetyLen}mm</b><br>
   `;
-  if (p.residual > 0) {
-    dzHtml += `잔재 안전값(#129): <b>${p.residual}mm</b> ← RS40<br>`;
-  }
+  if (p.residual > 0) dzHtml += `잔재 안전값(#129): <b>${p.residual}mm</b> ← RS40<br>`;
   dzHtml += `<hr style="border-color:#333;margin:8px 0">`;
-  dzHtml += `<span class="total">합계: ${deadZone + p.residual}mm 못 씀</span><br><br>`;
+  dzHtml += `<span class="total">합계: ${deadZoneVal}mm 못 씀</span><br><br>`;
   dzHtml += `+ 페이스컷(#104): ${p.faceCut}mm (첫 가공)<br>`;
   dzHtml += `+ 마진(#123): ${p.margin}mm (오토링크마다)<br>`;
   dzHtml += `+ 팁폭(#114): ${p.tipWidth}mm (잔재 인출 시)`;
   document.getElementById('deadZoneInfo').innerHTML = dzHtml;
 
-  // 빠른 계산도 갱신
   quickCalc();
-
-  // 자동으로 범위표 탭으로 이동
   switchTab('table');
 }
 
 function quickCalc() {
-  const p = getParams();
+  const p    = getParams();
   const v102 = parseInt(document.getElementById('q102').value);
   const v101 = parseInt(document.getElementById('q101').value) || 0;
   const matLen = v102 + v101;
-
-  const r = calcPieces(p, matLen);
-  const el = document.getElementById('quickResult');
+  const r    = calcPieces(p, matLen);
+  const el   = document.getElementById('quickResult');
 
   if (!r) {
     el.innerHTML = `<div class="big">--</div><div class="detail">소재 길이 부족 (최소 ${Math.ceil(p.chuckInit)}mm 이상)</div>`;
-    return;
+  } else {
+    const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS40', 'CM'][p.matType] || '기타';
+    el.innerHTML = `
+      <div class="big">${r.total}개</div>
+      <div class="detail">
+        소재 ${matLen}mm (${matName}) | 오토링크 ${r.autoPulls}회 | 잔재 ${r.remainPcs}개 | 버림 ${r.scrap.toFixed(1)}mm
+      </div>
+    `;
   }
 
-  const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS', 'CM'][p.matType] || '기타';
-  el.innerHTML = `
-    <div class="big">${r.total}개</div>
-    <div class="detail">
-      소재 ${matLen}mm (${matName}) | 오토링크 ${r.autoPulls}회 | 잔재 ${r.remainPcs}개 | 버림 ${r.scrap.toFixed(1)}mm
-    </div>
-  `;
+  // 시각화 탭이 열려있으면 갱신
+  if (document.getElementById('tab-viz').classList.contains('active')) {
+    renderViz();
+  }
 }
 
 function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-bar button').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  const tabs = ['settings', 'table', 'deadzone'];
+  const tabs = ['settings', 'table', 'deadzone', 'viz'];
   document.querySelectorAll('.tab-bar button')[tabs.indexOf(name)].classList.add('active');
+  if (name === 'viz') renderViz();
 }
 
-// 초기 계산
-window.onload = function() {
+window.onload = function () {
   calculate();
   switchTab('settings');
 };
