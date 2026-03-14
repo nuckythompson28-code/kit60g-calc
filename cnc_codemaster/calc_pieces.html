@@ -8,291 +8,83 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: -apple-system, 'Malgun Gothic', sans-serif;
-  background: #1a1a2e;
-  color: #e0e0e0;
-  padding: 12px;
-  font-size: 14px;
+  background: #1a1a2e; color: #e0e0e0;
+  padding: 12px; font-size: 14px;
   -webkit-text-size-adjust: none;
 }
 h1 {
-  text-align: center;
-  font-size: 18px;
-  color: #00d4ff;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #333;
-  padding-bottom: 8px;
+  text-align: center; font-size: 18px; color: #00d4ff;
+  margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px;
 }
-.input-section {
-  background: #16213e;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 12px;
+.card { background: #16213e; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.card h2 { font-size: 14px; color: #00d4ff; margin-bottom: 10px; }
+.row { display: flex; align-items: center; margin-bottom: 8px; gap: 8px; }
+.row label { flex: 1; font-size: 13px; color: #aaa; }
+.row input, .row select {
+  width: 90px; padding: 8px; border: 1px solid #444; border-radius: 6px;
+  background: #0f3460; color: #fff; font-size: 15px;
+  text-align: center; -webkit-appearance: none;
 }
-.input-section h2 {
-  font-size: 14px;
-  color: #00d4ff;
-  margin-bottom: 10px;
+.row select { width: 120px; }
+.row .unit { font-size: 12px; color: #666; width: 30px; }
+.btn {
+  width: 100%; padding: 14px; background: #e94560; color: #fff;
+  border: none; border-radius: 10px; font-size: 16px;
+  font-weight: bold; cursor: pointer; margin-bottom: 12px;
 }
-.input-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-  gap: 8px;
+.btn:active { background: #c73550; }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 12px; }
+.tab-bar .btn { flex: 1; padding: 10px 4px; font-size: 12px; background: #16213e; border-radius: 8px; margin: 0; }
+.tab-bar .btn.active { background: #e94560; }
+.tab { display: none; }
+.tab.active { display: block; }
+.quick-card { background: #0f3460; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.quick-card h2 { font-size: 14px; color: #00d4ff; margin-bottom: 10px; }
+.quick-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.quick-row input {
+  width: 80px; padding: 10px; border: 2px solid #e94560;
+  border-radius: 8px; background: #1a1a2e; color: #fff;
+  font-size: 18px; text-align: center;
 }
-.input-row label {
-  flex: 1;
-  font-size: 13px;
-  color: #aaa;
-}
-.input-row input, .input-row select {
-  width: 90px;
-  padding: 8px;
-  border: 1px solid #444;
-  border-radius: 6px;
-  background: #0f3460;
-  color: #fff;
-  font-size: 15px;
-  text-align: center;
-  -webkit-appearance: none;
-}
-.input-row select { width: 120px; }
-.input-row .unit {
-  font-size: 12px;
-  color: #666;
-  width: 30px;
-}
-button {
-  width: 100%;
-  padding: 14px;
-  background: #e94560;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  margin-bottom: 12px;
-}
-button:active { background: #c73550; }
-.result-box {
-  background: #16213e;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 12px;
-}
-.result-box h2 {
-  font-size: 14px;
-  color: #00d4ff;
-  margin-bottom: 8px;
-}
-.dead-zone {
-  background: #1a1a2e;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 8px;
-  font-size: 13px;
-  line-height: 1.8;
-}
-.dead-zone .total {
-  color: #e94560;
-  font-weight: bold;
-  font-size: 15px;
-}
-.chuck-info {
-  display: flex;
-  justify-content: space-around;
-  background: #1a1a2e;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 8px;
-}
+.quick-result { background: #1a1a2e; border-radius: 8px; padding: 12px; text-align: center; margin-top: 8px; }
+.quick-result .big { font-size: 36px; font-weight: bold; color: #e94560; }
+.quick-result .detail { font-size: 12px; color: #888; margin-top: 4px; }
+.chuck-info { display: flex; justify-content: space-around; background: #1a1a2e; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
 .chuck-info div { text-align: center; }
 .chuck-info .val { font-size: 20px; font-weight: bold; color: #00d4ff; }
 .chuck-info .lbl { font-size: 11px; color: #888; }
-.range-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.range-table th {
-  background: #0f3460;
-  padding: 8px 4px;
-  text-align: center;
-  font-size: 11px;
-  color: #aaa;
-  position: sticky;
-  top: 0;
-}
-.range-table td {
-  padding: 7px 4px;
-  text-align: center;
-  border-bottom: 1px solid #222;
-}
+.range-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.range-table th { background: #0f3460; padding: 8px 4px; text-align: center; font-size: 11px; color: #aaa; position: sticky; top: 0; }
+.range-table td { padding: 7px 4px; text-align: center; border-bottom: 1px solid #222; }
 .range-table tr:nth-child(even) { background: #1a1a2e; }
 .range-table .pcs { color: #00d4ff; font-weight: bold; font-size: 14px; }
 .range-table .al-match { color: #e94560; font-size: 11px; }
-.range-table .highlight { background: #0f3460 !important; }
-.quick-calc {
-  background: #0f3460;
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 12px;
+.range-table .hl { background: #0f3460 !important; }
+.dz-box { background: #1a1a2e; border-radius: 8px; padding: 10px; font-size: 13px; line-height: 1.8; }
+.dz-box .total { color: #e94560; font-weight: bold; font-size: 15px; }
+/* viz */
+.legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; margin-top: 10px; line-height: 1.8; }
+.legend span b { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 3px; }
+.viz-stats { font-size: 13px; margin-top: 6px; line-height: 1.8; color: #aaa; }
+.cycle-row { margin-bottom: 8px; }
+.cycle-lbl { font-size: 11px; color: #888; margin-bottom: 3px; }
+.cycle-lbl.remain { color: #0984e3; }
+/* anim */
+.anim-event {
+  background: #0a0a1a; border-radius: 8px; padding: 10px 14px;
+  font-size: 14px; font-weight: bold; color: #00d4ff;
+  min-height: 38px; display: flex; align-items: center;
+  margin-bottom: 6px; border: 1px solid #333; transition: background 0.2s;
 }
-.quick-calc h2 { font-size: 14px; color: #00d4ff; margin-bottom: 10px; }
-.quick-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.quick-row input {
-  width: 80px;
-  padding: 10px;
-  border: 2px solid #e94560;
-  border-radius: 8px;
-  background: #1a1a2e;
-  color: #fff;
-  font-size: 18px;
-  text-align: center;
-}
-.quick-result {
-  background: #1a1a2e;
-  border-radius: 8px;
-  padding: 12px;
-  text-align: center;
-  margin-top: 8px;
-}
-.quick-result .big { font-size: 36px; font-weight: bold; color: #e94560; }
-.quick-result .detail { font-size: 12px; color: #888; margin-top: 4px; }
-.tab-bar {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-.tab-bar button {
-  flex: 1;
-  padding: 10px 4px;
-  font-size: 12px;
-  background: #16213e;
-  border-radius: 8px;
-  margin: 0;
-}
-.tab-bar button.active { background: #e94560; }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-
-/* ===== 애니메이션 ===== */
-.anim-section {
-  margin-top: 16px;
-  border-top: 1px solid #333;
-  padding-top: 14px;
-}
-.anim-event-box {
-  background: #0a0a1a;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: bold;
-  color: #00d4ff;
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  margin-bottom: 6px;
-  border: 1px solid #333;
-  transition: background 0.2s;
-}
-.anim-event-box.flash-al  { background: #2d1f00; border-color: #fdcb6e; color: #fdcb6e; }
-.anim-event-box.flash-done { background: #001a10; border-color: #00b894; color: #00b894; }
-.anim-progress-wrap {
-  display: flex;
-  align-items: center;
-  margin: 6px 0 10px;
-}
-.anim-progress-bg {
-  flex: 1;
-  height: 6px;
-  background: #333;
-  border-radius: 3px;
-  overflow: hidden;
-}
-.anim-progress-bar {
-  height: 100%;
-  background: #e94560;
-  border-radius: 3px;
-  width: 0%;
-  transition: width 0.1s;
-}
-.anim-controls {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.anim-btn {
-  flex: 1;
-  padding: 10px 4px;
-  font-size: 12px;
-  background: #16213e;
-  border-radius: 8px;
-  margin: 0;
-  width: auto;
-}
+.anim-event.al  { background: #2d1f00; border-color: #fdcb6e; color: #fdcb6e; }
+.anim-event.done { background: #001a10; border-color: #00b894; color: #00b894; }
+.prog-wrap { display: flex; align-items: center; margin: 6px 0 10px; }
+.prog-bg { flex: 1; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+.prog-bar { height: 100%; background: #e94560; border-radius: 3px; width: 0%; transition: width 0.1s; }
+.anim-ctrl { display: flex; gap: 6px; align-items: center; }
+.anim-btn { flex: 1; padding: 10px 4px; font-size: 12px; background: #16213e; border-radius: 8px; margin: 0; width: auto; border: none; color: #fff; cursor: pointer; }
 .anim-btn:active { background: #0f3460; }
-.anim-select {
-  padding: 8px 6px;
-  border: 1px solid #444;
-  border-radius: 8px;
-  background: #0f3460;
-  color: #fff;
-  font-size: 12px;
-  -webkit-appearance: none;
-}
-
-/* ===== 시각화 탭 ===== */
-.viz-bar-wrap {
-  background: #1a1a2e;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-.viz-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 12px;
-  margin-top: 10px;
-  line-height: 1.8;
-}
-.viz-legend span b {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  vertical-align: middle;
-  margin-right: 3px;
-}
-.viz-stats {
-  font-size: 13px;
-  margin-top: 6px;
-  line-height: 1.8;
-  color: #aaa;
-}
-.viz-cycle-wrap {
-  margin-top: 14px;
-}
-.viz-cycle-wrap h3 {
-  font-size: 13px;
-  color: #00d4ff;
-  margin-bottom: 8px;
-}
-.cycle-row {
-  margin-bottom: 8px;
-}
-.cycle-label {
-  font-size: 11px;
-  color: #888;
-  margin-bottom: 3px;
-}
-.cycle-label.remain { color: #0984e3; }
+.spd-sel { padding: 8px 6px; border: 1px solid #444; border-radius: 8px; background: #0f3460; color: #fff; font-size: 12px; -webkit-appearance: none; }
 </style>
 </head>
 <body>
@@ -300,103 +92,62 @@ button:active { background: #c73550; }
 <h1>KIT60G 생산개수 계산기</h1>
 
 <!-- 빠른 계산 -->
-<div class="quick-calc">
+<div class="quick-card">
   <h2>빠른 계산</h2>
   <div class="quick-row">
     <label style="color:#aaa">#102</label>
     <select id="q102" onchange="quickCalc()">
-      <option value="0">0</option>
-      <option value="100">100</option>
-      <option value="200">200</option>
-      <option value="300">300</option>
-      <option value="400">400</option>
-      <option value="500" selected>500</option>
+      <option value="0">0</option><option value="100">100</option>
+      <option value="200">200</option><option value="300">300</option>
+      <option value="400">400</option><option value="500" selected>500</option>
     </select>
     <label style="color:#aaa">#101</label>
-    <input type="number" id="q101" value="43" min="0" max="99" inputmode="numeric" onchange="quickCalc()" oninput="quickCalc()">
+    <input type="number" id="q101" value="43" min="0" max="99" inputmode="numeric" oninput="quickCalc()">
   </div>
   <div class="quick-result" id="quickResult">
-    <div class="big">--</div>
-    <div class="detail">위 값을 입력하세요</div>
+    <div class="big">--</div><div class="detail">위 값을 입력하세요</div>
   </div>
 </div>
 
 <!-- 탭 -->
 <div class="tab-bar">
-  <button class="active" onclick="switchTab('settings')">설정</button>
-  <button onclick="switchTab('table')">범위표</button>
-  <button onclick="switchTab('deadzone')">데드존</button>
-  <button onclick="switchTab('viz')">시각화</button>
+  <button class="btn active" onclick="switchTab('settings')">설정</button>
+  <button class="btn" onclick="switchTab('table')">범위표</button>
+  <button class="btn" onclick="switchTab('deadzone')">데드존</button>
+  <button class="btn" onclick="switchTab('viz')">시각화</button>
 </div>
 
 <!-- 설정 탭 -->
-<div id="tab-settings" class="tab-content active">
-  <div class="input-section">
+<div id="tab-settings" class="tab active">
+  <div class="card">
     <h2>제품 설정</h2>
-    <div class="input-row">
-      <label>완성 길이 (#113)</label>
-      <input type="number" id="finLen" value="8.0" step="0.001" inputmode="decimal">
-      <span class="unit">mm</span>
-    </div>
-    <div class="input-row">
-      <label>팁 폭 (#114)</label>
-      <input type="number" id="tipWidth" value="2.0" step="0.01" inputmode="decimal">
-      <span class="unit">mm</span>
-    </div>
-    <div class="input-row">
-      <label>소재 타입 (#105)</label>
+    <div class="row"><label>완성 길이 (#113)</label><input type="number" id="finLen" value="8.0" step="0.001" inputmode="decimal"><span class="unit">mm</span></div>
+    <div class="row"><label>팁 폭 (#114)</label><input type="number" id="tipWidth" value="2.0" step="0.01" inputmode="decimal"><span class="unit">mm</span></div>
+    <div class="row"><label>소재 타입 (#105)</label>
       <select id="matType">
-        <option value="1">1: CN</option>
-        <option value="2">2: RS40</option>
-        <option value="3" selected>3: CM</option>
+        <option value="1">1: CN</option><option value="2">2: RS40</option><option value="3" selected>3: CM</option>
       </select>
     </div>
   </div>
-
-  <div class="input-section">
+  <div class="card">
     <h2>장비 설정</h2>
-    <div class="input-row">
-      <label>척 길이 (#103)</label>
-      <input type="number" id="chuckInit" value="75" step="1" inputmode="numeric">
-      <span class="unit">mm</span>
-    </div>
-    <div class="input-row">
-      <label>안전 거리 (#530)</label>
-      <input type="number" id="safetyLen" value="12" step="1" inputmode="numeric">
-      <span class="unit">mm</span>
-    </div>
-    <div class="input-row">
-      <label>척 좌측 한계 (#531)</label>
-      <input type="number" id="chuckLeft" value="15" step="1" inputmode="numeric">
-      <span class="unit">mm</span>
-    </div>
-    <div class="input-row">
-      <label>척투조 거리 (#532)</label>
-      <input type="number" id="chuck2jaw" value="1.03" step="0.01" inputmode="decimal">
-      <span class="unit">mm</span>
-    </div>
-    <div class="input-row">
-      <label>페이스컷 (#104)</label>
-      <input type="number" id="faceCut" value="1" step="0.1" inputmode="decimal">
-      <span class="unit">mm</span>
-    </div>
-    <div class="input-row">
-      <label>마진 (#123)</label>
-      <input type="number" id="margin" value="0.2" step="0.1" inputmode="decimal">
-      <span class="unit">mm</span>
-    </div>
+    <div class="row"><label>척 길이 (#103)</label><input type="number" id="chuckInit" value="75" step="1" inputmode="numeric"><span class="unit">mm</span></div>
+    <div class="row"><label>안전 거리 (#530)</label><input type="number" id="safetyLen" value="12" step="1" inputmode="numeric"><span class="unit">mm</span></div>
+    <div class="row"><label>척 좌측 한계 (#531)</label><input type="number" id="chuckLeft" value="15" step="1" inputmode="numeric"><span class="unit">mm</span></div>
+    <div class="row"><label>척투조 거리 (#532)</label><input type="number" id="chuck2jaw" value="1.03" step="0.01" inputmode="decimal"><span class="unit">mm</span></div>
+    <div class="row"><label>페이스컷 (#104)</label><input type="number" id="faceCut" value="1" step="0.1" inputmode="decimal"><span class="unit">mm</span></div>
+    <div class="row"><label>마진 (#123)</label><input type="number" id="margin" value="0.2" step="0.1" inputmode="decimal"><span class="unit">mm</span></div>
   </div>
-
-  <button onclick="calculate()">계산하기</button>
+  <button class="btn" onclick="calculate()">계산하기</button>
 </div>
 
 <!-- 범위표 탭 -->
-<div id="tab-table" class="tab-content">
-  <div class="result-box">
+<div id="tab-table" class="tab">
+  <div class="card">
     <h2 id="tableTitle">계산 결과</h2>
     <div class="chuck-info" id="chuckInfo"></div>
     <div style="overflow-x:auto">
-      <table class="range-table" id="rangeTable">
+      <table class="range-table">
         <thead><tr><th>소재길이</th><th>총개수</th><th>AL</th><th>잔재</th><th>버림</th></tr></thead>
         <tbody id="rangeBody"></tbody>
       </table>
@@ -405,61 +156,48 @@ button:active { background: #c73550; }
 </div>
 
 <!-- 데드존 탭 -->
-<div id="tab-deadzone" class="tab-content">
-  <div class="result-box">
+<div id="tab-deadzone" class="tab">
+  <div class="card">
     <h2>못 쓰는 구간 (데드존)</h2>
-    <div class="dead-zone" id="deadZoneInfo"></div>
+    <div class="dz-box" id="dzInfo"></div>
   </div>
 </div>
 
 <!-- 시각화 탭 -->
-<div id="tab-viz" class="tab-content">
-  <div class="result-box">
+<div id="tab-viz" class="tab">
+  <div class="card">
     <h2 id="vizTitle">소재 배치 시각화</h2>
-
-    <div class="viz-bar-wrap">
+    <div style="background:#1a1a2e;border-radius:8px;padding:10px;margin-bottom:10px">
       <div id="vizBar"></div>
-      <div class="viz-legend">
-        <span><b style="background:#00b894"></b>제품(메인) — #113 완성길이</span>
-        <span><b style="background:#0984e3"></b>잔재 — O9003 가공</span>
-        <span><b style="background:#e17055"></b>파팅 — #114 팁폭(칼날두께)</span>
-        <span><b style="background:#fdcb6e"></b>마진 — #123 AL이송여유</span>
-        <span><b style="background:#6c5ce7"></b>페이스컷 — #104 단면절삭</span>
-        <span><b style="background:#636e72"></b>구분자 — #114 AL전 척킹여유</span>
-        <span><b style="background:#d63031"></b>스크랩 — 버려지는 자투리</span>
-        <span><b style="background:#7c1a1a;border:1px solid #e94560"></b>조물림 DZ — #531 최소물림(조 안)</span>
-        <span><b style="background:#3d0c0c;border:1px solid #e94560"></b>조바깥 DZ — #530+#532 (조 밖)</span>
+      <div class="legend">
+        <span><b style="background:#00b894"></b>메인제품 — #113</span>
+        <span><b style="background:#0984e3"></b>잔재제품 — O9003</span>
+        <span><b style="background:#e17055"></b>파팅 — #114 칼날폭</span>
+        <span><b style="background:#fdcb6e"></b>마진 — #123 AL여유</span>
+        <span><b style="background:#636e72"></b>구분자 — #114 위치보정</span>
+        <span><b style="background:#6c5ce7"></b>페이스컷 — #104</span>
+        <span><b style="background:#d63031"></b>스크랩 — 자투리</span>
+        <span><b style="background:#7c1a1a;border:1px solid #e94560"></b>조물림 DZ — #531</span>
+        <span><b style="background:#3d0c0c;border:1px solid #e94560"></b>조바깥 DZ — #530+#532</span>
       </div>
       <div class="viz-stats" id="vizStats"></div>
     </div>
-
-    <div class="viz-cycle-wrap">
-      <h3>사이클별 상세</h3>
-      <div id="vizCycles"></div>
-    </div>
+    <div id="vizCycles"></div>
 
     <!-- 애니메이션 -->
-    <div class="anim-section">
+    <div style="margin-top:16px;border-top:1px solid #333;padding-top:14px">
       <h3 style="font-size:13px;color:#00d4ff;margin-bottom:10px">▶ 가공 애니메이션</h3>
-
-      <div class="anim-event-box">
-        <span id="animEvent">재생 버튼을 눌러 시작</span>
-      </div>
-
+      <div class="anim-event" id="animEvent">재생 버튼을 눌러 시작</div>
       <div id="animCanvas" style="margin:8px 0"></div>
-
-      <div class="anim-progress-wrap">
-        <div class="anim-progress-bg">
-          <div class="anim-progress-bar" id="animProgress"></div>
-        </div>
+      <div class="prog-wrap">
+        <div class="prog-bg"><div class="prog-bar" id="animProg"></div></div>
         <span id="animStep" style="font-size:11px;color:#666;margin-left:6px">0/0</span>
       </div>
-
-      <div class="anim-controls">
+      <div class="anim-ctrl">
         <button class="anim-btn" onclick="animPlay()">▶ 재생</button>
         <button class="anim-btn" onclick="animPause()">⏸ 정지</button>
         <button class="anim-btn" onclick="animReset()">↺ 초기화</button>
-        <select id="animSpeed" class="anim-select">
+        <select id="animSpd" class="spd-sel">
           <option value="400">느림</option>
           <option value="180" selected>보통</option>
           <option value="70">빠름</option>
@@ -471,10 +209,13 @@ button:active { background: #c73550; }
 </div>
 
 <script>
+'use strict';
+
+/* ── 파라미터 ── */
 let G = {};
 
-function getParams() {
-  const matType = parseInt(document.getElementById('matType').value);
+function getP() {
+  const mt = parseInt(document.getElementById('matType').value);
   return {
     finLen:    parseFloat(document.getElementById('finLen').value),
     tipWidth:  parseFloat(document.getElementById('tipWidth').value),
@@ -484,359 +225,325 @@ function getParams() {
     chuck2jaw: parseFloat(document.getElementById('chuck2jaw').value),
     faceCut:   parseFloat(document.getElementById('faceCut').value),
     margin:    parseFloat(document.getElementById('margin').value),
-    residual:  (matType === 2) ? 15 : 0,
-    matType:   matType
+    residual:  (mt === 2) ? 15 : 0,
+    matType:   mt
   };
 }
 
-function calcPieces(p, matLen) {
-  const unitW   = p.finLen + p.tipWidth;
+/* ── 계산 ── */
+function calc(p, matLen) {
+  const unitW    = p.finLen + p.tipWidth;
   const deadZone = p.chuckLeft + p.chuck2jaw + p.safetyLen;
   const pcsChuck = Math.floor((p.chuckInit - p.safetyLen) / unitW);
-  const chuckOpt = pcsChuck * unitW + p.safetyLen;
+  if (pcsChuck < 1) return null;
   const machLen  = pcsChuck * unitW;
   const effMat   = matLen - p.residual;
 
-  if (effMat <= chuckOpt) return null;
+  if (effMat <= machLen + p.safetyLen) return null;
 
   let autoPulls = Math.floor(
-    (effMat - p.chuckLeft - p.chuck2jaw - p.safetyLen - machLen - p.tipWidth - p.faceCut)
+    (effMat - deadZone - machLen - p.tipWidth - p.faceCut)
     / (machLen + p.tipWidth + p.margin)
   );
   if (autoPulls < 0) autoPulls = 0;
 
-  const pcsMain   = pcsChuck * (1 + autoPulls);
-  const consumed  = (machLen + p.tipWidth + p.faceCut) + autoPulls * (machLen + p.tipWidth + p.margin);
+  const consumed  = (machLen + p.tipWidth + p.faceCut)
+                  + autoPulls * (machLen + p.tipWidth + p.margin);
   const remainRaw = effMat - consumed - deadZone - (p.tipWidth + p.margin);
   const remainPcs = Math.max(0, Math.floor(remainRaw / unitW));
-  const total     = pcsMain + remainPcs;
+  const scrap     = remainPcs > 0
+                  ? Math.max(0, remainRaw - remainPcs * unitW)
+                  : Math.max(0, remainRaw);
+  const total     = pcsChuck * (1 + autoPulls) + remainPcs;
 
-  let scrap;
-  if (remainPcs > 0) {
-    scrap = remainRaw - remainPcs * unitW;
-  } else {
-    scrap = Math.max(0, remainRaw);
-  }
-
-  return {
-    total, autoPulls, remainPcs, scrap,
-    pcsChuck, chuckOpt, machLen, unitW, deadZone
-  };
+  return { total, autoPulls, remainPcs, scrap, pcsChuck, machLen, unitW, deadZone };
 }
 
-/* ─────────────────────────────────────────────
-   시각화
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════════
+   시각화 세그먼트 빌더 (왼→오 단방향)
+   ════════════════════════════════════════ */
+/*
+  물리적 배치 (왼=척, 오=face):
+
+  [스크랩] [#531 조물림] [#530+#532 조바깥] [잔재피스×N] [마진#123][구분#114] [메인사이클들...] [페이스컷#104]
+
+  메인사이클 (왼=마지막AL, 오=초기척킹):
+    [구분#114][피스×M] (사이클1) [마진#123] [구분#114][피스×M] (사이클2) [마진#123] ... [페이스컷]
+
+  잔재 없을 때: 스크랩 크기에 (#114+#123) 흡수
+*/
+function buildSegs(p, matLen, r) {
+  const segs = [];
+  const S = (x, w, c, lbl) => { if (w > 0.01) segs.push({ x, w, c, lbl: lbl || '' }); };
+  let x = 0;
+
+  // 잔재 없을 때: 구분자 공간(#114+#123)이 스크랩에 흡수됨
+  const scrapViz = r.remainPcs > 0 ? r.scrap : r.scrap + p.tipWidth + p.margin;
+
+  // 1. 스크랩
+  S(x, scrapViz, '#d63031', `스크랩 ${scrapViz.toFixed(1)}mm`);
+  x += scrapViz;
+
+  // 2. #531 조물림 DZ
+  S(x, p.chuckLeft, '#7c1a1a', `#531 ${p.chuckLeft}mm`);
+  x += p.chuckLeft;
+
+  // 3. #530+#532 조바깥 DZ
+  S(x, p.safetyLen + p.chuck2jaw, '#3d0c0c', `#530+532 ${(p.safetyLen + p.chuck2jaw).toFixed(2)}mm`);
+  x += p.safetyLen + p.chuck2jaw;
+
+  // 4. RS40 잔재안전값
+  if (p.residual > 0) {
+    S(x, p.residual, '#2d1b69', `잔재안전 ${p.residual}mm`);
+    x += p.residual;
+  }
+
+  // 5. 잔재 피스 (O9003)
+  const pcsMain = r.pcsChuck * (1 + r.autoPulls);
+  for (let j = 0; j < r.remainPcs; j++) {
+    const pn = pcsMain + j + 1;
+    S(x,              p.tipWidth, '#e17055', `잔재#${pn} 파팅`);
+    S(x + p.tipWidth, p.finLen,   '#0984e3', `잔재#${pn} 제품`);
+    x += r.unitW;
+  }
+
+  // 6. 잔재/메인 구분자 (잔재 있을 때만)
+  //    마진#123 (노랑) + 구분#114 (회색)
+  if (r.remainPcs > 0) {
+    S(x, p.margin,   '#fdcb6e', 'AL마진 #123');
+    x += p.margin;
+    S(x, p.tipWidth, '#636e72', '구분 #114');
+    x += p.tipWidth;
+  }
+
+  // 7. 메인 사이클들 (왼=마지막AL, 오=초기척킹)
+  //    패턴: [구분#114][피스들] × cycles, 사이클 사이: [마진#123]
+  for (let cyc = 0; cyc <= r.autoPulls; cyc++) {
+    // 구분자 (각 사이클 왼쪽)
+    const cycLabel = cyc === r.autoPulls ? '초기척킹 구분' : `AL${r.autoPulls - cyc} 구분`;
+    S(x, p.tipWidth, '#636e72', cycLabel + ' #114');
+    x += p.tipWidth;
+
+    // 피스들 (왼=깊은곳, 오=face쪽)
+    for (let j = 0; j < r.pcsChuck; j++) {
+      // 사이클 번호: cyc=0이 맨왼쪽(마지막AL), cyc=autoPulls가 초기
+      const cycNum = r.autoPulls - cyc;   // 0=초기, autoPulls=마지막AL
+      const pn = cycNum * r.pcsChuck + j + 1;
+      S(x,              p.tipWidth, '#e17055', `#${pn} 파팅`);
+      S(x + p.tipWidth, p.finLen,   '#00b894', `#${pn} 제품`);
+      x += r.unitW;
+    }
+
+    // 사이클 사이 마진 (마지막 사이클=초기척킹 이후에는 없음)
+    if (cyc < r.autoPulls) {
+      S(x, p.margin, '#fdcb6e', 'AL마진 #123');
+      x += p.margin;
+    }
+  }
+
+  // 8. 페이스컷
+  S(x, p.faceCut, '#6c5ce7', `페이스컷 #104`);
+  x += p.faceCut;
+
+  return segs;
+}
+
+/* ── 시각화 렌더 ── */
 function renderViz() {
-  const p = G.p || getParams();
-  const v102  = parseInt(document.getElementById('q102').value);
-  const v101  = parseInt(document.getElementById('q101').value) || 0;
+  const p      = G.p || getP();
+  const v102   = parseInt(document.getElementById('q102').value);
+  const v101   = parseInt(document.getElementById('q101').value) || 0;
   const matLen = v102 + v101;
-  const r = calcPieces(p, matLen);
+  const r      = calc(p, matLen);
 
   const barEl    = document.getElementById('vizBar');
   const statsEl  = document.getElementById('vizStats');
   const cyclesEl = document.getElementById('vizCycles');
-  document.getElementById('vizTitle').textContent =
-    `소재 배치 시각화 — ${matLen}mm`;
+  document.getElementById('vizTitle').textContent = `소재 배치 시각화 — ${matLen}mm`;
 
   if (!r) {
     barEl.innerHTML = '<p style="color:#e94560;text-align:center;padding:16px">소재 길이 부족</p>';
-    statsEl.innerHTML = '';
-    cyclesEl.innerHTML = '';
+    statsEl.innerHTML = ''; cyclesEl.innerHTML = '';
     return;
   }
 
-  const deadTotal = r.deadZone + p.residual;
-  const W   = Math.max(barEl.clientWidth || 300, 200);
-  const sc  = (W - 2) / matLen;   // px per mm
-  const BH  = 48;
+  const W  = Math.max(barEl.clientWidth || 300, 200);
+  const sc = (W - 2) / matLen;
+  const BH = 48;
 
-  /* 세그먼트 수집 */
-  const segs = [];
-  const push = (x, w, c, lbl) => { if (w > 0.01) segs.push({x, w, c, lbl: lbl || ''}); };
+  const segs = buildSegs(p, matLen, r);
 
-  /* ── 오른쪽(face)부터 계산 ── */
-  let rp = matLen;
-
-  // 페이스컷
-  push(rp - p.faceCut, p.faceCut, '#6c5ce7', 'F');
-  rp -= p.faceCut;
-
-  // 초기 사이클 피스
-  for (let j = 0; j < r.pcsChuck; j++) {
-    push(rp - (j + 1) * r.unitW,              p.tipWidth, '#e17055', '');
-    push(rp - (j + 1) * r.unitW + p.tipWidth, p.finLen,   '#00b894', '');
-  }
-  rp -= r.pcsChuck * r.unitW;
-
-  // 초기 사이클 꼬리 구분자
-  push(rp - p.tipWidth, p.tipWidth, '#636e72', '');
-  rp -= p.tipWidth;
-
-  // AL 사이클들
-  for (let i = 0; i < r.autoPulls; i++) {
-    push(rp - p.margin, p.margin, '#fdcb6e', '');
-    rp -= p.margin;
-
-    for (let j = 0; j < r.pcsChuck; j++) {
-      push(rp - (j + 1) * r.unitW,              p.tipWidth, '#e17055', '');
-      push(rp - (j + 1) * r.unitW + p.tipWidth, p.finLen,   '#00b894', '');
-    }
-    rp -= r.pcsChuck * r.unitW;
-
-    push(rp - p.tipWidth, p.tipWidth, '#636e72', '');
-    rp -= p.tipWidth;
-  }
-
-  /* ── 왼쪽(척)부터: [스크랩][#531 조물림DZ][#530+#532 조바깥DZ][구분자][잔재][메인] ── */
-  // 스크랩은 x=0(맨 왼쪽), 그다음 DZ 두 구간, 그다음 잔재+메인
-  let lp = r.scrap + deadTotal;  // 가공 가능한 좌측 경계
-
-  if (r.remainPcs > 0) {
-    for (let j = r.remainPcs - 1; j >= 0; j--) {
-      push(lp,              p.tipWidth, '#e17055', '');
-      push(lp + p.tipWidth, p.finLen,   '#0984e3', '');
-      lp += r.unitW;
-    }
-    push(lp,            p.margin,   '#fdcb6e', '');  // AL마진 #123
-    push(lp + p.margin, p.tipWidth, '#636e72', '');  // #114 위치구분
-    lp += p.tipWidth + p.margin;
-  }
-
-  /* SVG 그리기 */
-  segs.sort((a, b) => a.x - b.x);
-
-  let svgInner = '';
+  let svg = '';
   segs.forEach(s => {
     const px = (1 + s.x * sc).toFixed(1);
     const pw = Math.max(s.w * sc, 0.5).toFixed(1);
-    svgInner += `<rect x="${px}" y="0" width="${pw}" height="${BH}" fill="${s.c}" stroke="#0a0a1a" stroke-width="0.2"/>`;
+    svg += `<rect x="${px}" y="0" width="${pw}" height="${BH}" fill="${s.c}" stroke="#0a0a1a" stroke-width="0.2"/>`;
     if (parseFloat(pw) > 18) {
       const fs = Math.min(9, parseFloat(pw) * 0.35);
       const cx = (parseFloat(px) + parseFloat(pw) / 2).toFixed(1);
-      svgInner += `<text x="${cx}" y="${BH / 2 + 4}" text-anchor="middle" fill="#fff" font-size="${fs}" font-weight="bold">${Math.round(s.w)}</text>`;
+      svg += `<text x="${cx}" y="${BH/2+4}" text-anchor="middle" fill="#fff" font-size="${fs}" font-weight="bold">${s.lbl || Math.round(s.w)}</text>`;
     }
   });
 
-  // 왼쪽 구간 명시적 렌더: [스크랩][#531 조물림][#530+#532 조바깥]
-  const scrapW  = r.scrap * sc;
-  const jaw531W = Math.max(p.chuckLeft * sc, 1);
-  const jawOutW = Math.max((p.safetyLen + p.chuck2jaw) * sc, 1);
-  const scrapPx = 1;
-  const jaw531Px = scrapPx + scrapW;
-  const jawOutPx = jaw531Px + jaw531W;
-
-  // 스크랩 (척 가장 안쪽)
-  if (r.scrap > 0.05) {
-    svgInner += `<rect x="${scrapPx}" y="0" width="${scrapW.toFixed(1)}" height="${BH}" fill="#d63031" stroke="#0a0a1a" stroke-width="0.5"/>`;
-    if (scrapW > 18) svgInner += `<text x="${(scrapPx + scrapW/2).toFixed(1)}" y="${BH/2+4}" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">${Math.round(r.scrap)}</text>`;
-  }
-
-  // #531 조물림 데드존
-  svgInner += `<rect x="${jaw531Px.toFixed(1)}" y="0" width="${jaw531W.toFixed(1)}" height="${BH}" fill="#7c1a1a" stroke="#e94560" stroke-width="1"/>`;
-  if (jaw531W > 14) svgInner += `<text x="${(jaw531Px + jaw531W/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">#531</text><text x="${(jaw531Px + jaw531W/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${Math.round(p.chuckLeft)}</text>`;
-
-  // #530+#532 조바깥 데드존
-  svgInner += `<rect x="${jawOutPx.toFixed(1)}" y="0" width="${jawOutW.toFixed(1)}" height="${BH}" fill="#3d0c0c" stroke="#e94560" stroke-width="1"/>`;
-  if (jawOutW > 18) svgInner += `<text x="${(jawOutPx + jawOutW/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">#530+532</text><text x="${(jawOutPx + jawOutW/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${Math.round(p.safetyLen+p.chuck2jaw)}</text>`;
-
-  // 가공 가능 경계선
-  const dzX = (1 + (r.scrap + deadTotal) * sc).toFixed(1);
-  svgInner += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#e94560" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>`;
-
-  svgInner += `<text x="3" y="${BH - 5}" fill="#e94560" font-size="8">척</text>`;
-  svgInner += `<text x="${W - 30}" y="${BH - 5}" fill="#555" font-size="8">face</text>`;
+  // DZ 경계선 + 라벨
+  const dzX = (1 + (r.scrap + r.deadZone + p.residual) * sc).toFixed(1);
+  svg += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#e94560" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+  svg += `<text x="3" y="${BH-5}" fill="#e94560" font-size="8">척</text>`;
+  svg += `<text x="${W-30}" y="${BH-5}" fill="#555" font-size="8">face</text>`;
 
   barEl.innerHTML =
-    `<svg width="${W}" height="${BH}" style="display:block;border-radius:6px;overflow:hidden;border:1px solid #333">${svgInner}</svg>
-     <div style="display:flex;justify-content:space-between;font-size:10px;color:#555;margin:2px 0 0">
-       <span>0</span><span>${matLen}mm</span>
-     </div>`;
+    `<svg width="${W}" height="${BH}" style="display:block;border-radius:6px;overflow:hidden;border:1px solid #333;background:#0d0d1a">${svg}</svg>
+     <div style="display:flex;justify-content:space-between;font-size:10px;color:#555;margin:2px 0 0"><span>0</span><span>${matLen}mm</span></div>`;
 
-  /* 통계 */
-  const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS40', 'CM'][p.matType];
+  const deadTotal = r.deadZone + p.residual;
+  const matName   = p.residual > 0 ? 'RS40' : ['','CN','RS40','CM'][p.matType] || '기타';
   statsEl.innerHTML = `
     <div style="margin-top:4px">
-      <b style="color:#00b894">제품 ${r.total - r.remainPcs}개</b> (메인) +
-      <b style="color:#0984e3">${r.remainPcs}개</b> (잔재) =
-      <b style="color:#fff">${r.total}개</b> 합계
+      <b style="color:#00b894">메인 ${r.pcsChuck*(1+r.autoPulls)}개</b> +
+      <b style="color:#0984e3">잔재 ${r.remainPcs}개</b> =
+      <b style="color:#fff">총 ${r.total}개</b>
     </div>
     <div style="font-size:12px;color:#888;margin-top:2px">
-      오토링크 ${r.autoPulls}회 | 척당 ${r.pcsChuck}개 | 피치 ${r.unitW}mm |
+      AL ${r.autoPulls}회 | 척당 ${r.pcsChuck}개 | 피치 ${r.unitW}mm |
       스크랩 ${r.scrap.toFixed(1)}mm | 데드존 ${deadTotal.toFixed(1)}mm
     </div>`;
 
-  /* 사이클 상세 */
-  const totalCycles = 1 + r.autoPulls;
+  // 사이클 상세
+  const totalCyc = 1 + r.autoPulls;
   const CW    = W - 4;
   const slotW = CW / r.pcsChuck;
   const CH    = 20;
+  let cycHtml = '';
 
-  let cycleHTML = '';
-
-  for (let i = 0; i < totalCycles; i++) {
-    const label   = i === 0 ? '초기 척킹' : `AL ${i}회차`;
-    const pStart  = i * r.pcsChuck + 1;
-    const pEnd    = (i + 1) * r.pcsChuck;
-
+  for (let i = 0; i < totalCyc; i++) {
+    const label  = i === 0 ? '초기 척킹' : `AL ${i}회차`;
+    const pStart = i * r.pcsChuck + 1;
+    const pEnd   = (i + 1) * r.pcsChuck;
     let bars = '';
     for (let j = 0; j < r.pcsChuck; j++) {
       const bx  = (j * slotW + 1).toFixed(1);
-      const pw  = Math.max((slotW * p.finLen / r.unitW) - 1, 1).toFixed(1);
-      const ptw = Math.max(slotW * p.tipWidth / r.unitW - 0.5, 0.5).toFixed(1);
+      const pw  = Math.max(slotW * p.finLen / r.unitW - 1, 1).toFixed(1);
       const ptx = (parseFloat(bx) + parseFloat(pw) + 0.5).toFixed(1);
-      bars += `<rect x="${bx}"  y="1" width="${pw}"  height="${CH - 2}" fill="#00b894" rx="2"/>`;
-      bars += `<rect x="${ptx}" y="1" width="${ptw}" height="${CH - 2}" fill="#e17055" rx="1"/>`;
-      if (parseFloat(pw) > 16) {
-        const tx = (parseFloat(bx) + parseFloat(pw) / 2).toFixed(1);
-        bars += `<text x="${tx}" y="${CH / 2 + 4}" text-anchor="middle" fill="#fff" font-size="8">${pStart + j}</text>`;
-      }
+      const ptw = Math.max(slotW * p.tipWidth / r.unitW - 0.5, 0.5).toFixed(1);
+      bars += `<rect x="${bx}" y="1" width="${pw}" height="${CH-2}" fill="#00b894" rx="2"/>`;
+      bars += `<rect x="${ptx}" y="1" width="${ptw}" height="${CH-2}" fill="#e17055" rx="1"/>`;
+      if (parseFloat(pw) > 16) bars += `<text x="${(parseFloat(bx)+parseFloat(pw)/2).toFixed(1)}" y="${CH/2+4}" text-anchor="middle" fill="#fff" font-size="8">${pStart+j}</text>`;
     }
-
-    cycleHTML += `
-      <div class="cycle-row">
-        <div class="cycle-label">${label} — #${pStart}~${pEnd} (${r.pcsChuck}개)</div>
-        <svg width="${CW}" height="${CH}" style="display:block;background:#0a0a1a;border-radius:4px">${bars}</svg>
-      </div>`;
+    cycHtml += `<div class="cycle-row"><div class="cycle-lbl">${label} — #${pStart}~${pEnd} (${r.pcsChuck}개)</div>
+      <svg width="${CW}" height="${CH}" style="display:block;background:#0a0a1a;border-radius:4px">${bars}</svg></div>`;
   }
 
   if (r.remainPcs > 0) {
-    const rStart = totalCycles * r.pcsChuck + 1;
-    const rEnd   = totalCycles * r.pcsChuck + r.remainPcs;
+    const rStart = totalCyc * r.pcsChuck + 1;
+    const rEnd   = rStart + r.remainPcs - 1;
     const rW     = Math.min(CW, Math.ceil(r.remainPcs * slotW + 2));
-
     let bars = '';
     for (let j = 0; j < r.remainPcs; j++) {
       const bx  = (j * slotW + 1).toFixed(1);
-      const pw  = Math.max((slotW * p.finLen / r.unitW) - 1, 1).toFixed(1);
-      const ptw = Math.max(slotW * p.tipWidth / r.unitW - 0.5, 0.5).toFixed(1);
+      const pw  = Math.max(slotW * p.finLen / r.unitW - 1, 1).toFixed(1);
       const ptx = (parseFloat(bx) + parseFloat(pw) + 0.5).toFixed(1);
-      bars += `<rect x="${bx}"  y="1" width="${pw}"  height="${CH - 2}" fill="#0984e3" rx="2"/>`;
-      bars += `<rect x="${ptx}" y="1" width="${ptw}" height="${CH - 2}" fill="#e17055" rx="1"/>`;
-      if (parseFloat(pw) > 16) {
-        const tx = (parseFloat(bx) + parseFloat(pw) / 2).toFixed(1);
-        bars += `<text x="${tx}" y="${CH / 2 + 4}" text-anchor="middle" fill="#fff" font-size="8">${rStart + j}</text>`;
-      }
+      const ptw = Math.max(slotW * p.tipWidth / r.unitW - 0.5, 0.5).toFixed(1);
+      bars += `<rect x="${bx}" y="1" width="${pw}" height="${CH-2}" fill="#0984e3" rx="2"/>`;
+      bars += `<rect x="${ptx}" y="1" width="${ptw}" height="${CH-2}" fill="#e17055" rx="1"/>`;
+      if (parseFloat(pw) > 16) bars += `<text x="${(parseFloat(bx)+parseFloat(pw)/2).toFixed(1)}" y="${CH/2+4}" text-anchor="middle" fill="#fff" font-size="8">${rStart+j}</text>`;
     }
-
-    cycleHTML += `
-      <div class="cycle-row">
-        <div class="cycle-label remain">잔재 인출 (O9003) — #${rStart}~${rEnd} (${r.remainPcs}개)</div>
-        <svg width="${rW}" height="${CH}" style="display:block;background:#0a0a1a;border-radius:4px">${bars}</svg>
-      </div>`;
+    cycHtml += `<div class="cycle-row"><div class="cycle-lbl remain">잔재 인출 (O9003) — #${rStart}~${rEnd} (${r.remainPcs}개)</div>
+      <svg width="${rW}" height="${CH}" style="display:block;background:#0a0a1a;border-radius:4px">${bars}</svg></div>`;
   }
 
-  if (!cycleHTML) cycleHTML = '<p style="color:#555;font-size:12px">사이클 없음</p>';
-  cyclesEl.innerHTML = cycleHTML;
+  cyclesEl.innerHTML = cycHtml ? `<h3 style="font-size:13px;color:#00d4ff;margin-bottom:8px">사이클별 상세</h3>${cycHtml}` : '';
 }
 
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════
    애니메이션
-───────────────────────────────────────────── */
-let AN = { segs: [], maxStep: 0, current: 0, timerId: null, matLen: 0, p: null, r: null };
+   ════════════════════════════════════════ */
+const AN = { segs: [], maxStep: 0, cur: 0, tid: null, matLen: 0, p: null, r: null };
 
 function buildAnimSegs(p, matLen, r) {
+  // step-based: each element has a step number; show all segs with step <= cur
   const segs = [];
-  const dead = r.deadZone + p.residual;
   let step = 0;
+  const S = (x, w, c, ev, isEv) => segs.push({ step, x, w, c, ev: ev || '', isEv: !!isEv });
 
-  const push = (x, w, c, ev, isEv) => segs.push({ step, x, w, c, event: ev || '', isEvent: !!isEv });
+  // step 0: background bar
+  S(0, matLen, '#1e1e35', '');
 
-  // ── step 0: 배경 (항상 보임) ──
-  // 전체 소재 바 (raw material)
-  push(0, matLen, '#1e1e35', '');
-  // 데드존 (animDrawFrame에서 별도로 덮어서 렌더하므로 여기선 배경용만)
-  push(0, dead, '#1e1e35', '');
-
-  // 스크랩: x=0 맨 왼쪽에 미리 표시 (step 0 배경)
-  if (r.scrap > 0.05) push(0, r.scrap, '#3a1515', '');
-
-  // 페이스컷
+  // step 1: face cut
   step = 1;
-  let rp = matLen;
-  push(rp - p.faceCut, p.faceCut, '#6c5ce7', '✂ 페이스컷');
-  rp -= p.faceCut;
+  let x = matLen - p.faceCut;
+  S(x, p.faceCut, '#6c5ce7', '✂ 페이스컷 #104');
+  x -= p.faceCut;
 
-  // 초기 사이클
+  // step 2~: 초기 척킹 피스 (오→왼)
   for (let j = 0; j < r.pcsChuck; j++) {
     step++;
-    const sl = rp - (j + 1) * r.unitW;
-    push(sl,              p.tipWidth, '#e17055', `#${j + 1} 파팅`);
-    push(sl + p.tipWidth, p.finLen,   '#00b894', `#${j + 1} 가공 완료 ✓`);
+    const sx = x - (j + 1) * r.unitW;
+    S(sx,              p.tipWidth, '#e17055', `#${j+1} 파팅`);
+    S(sx + p.tipWidth, p.finLen,   '#00b894', `#${j+1} 가공완료 ✓`);
   }
-  rp -= r.pcsChuck * r.unitW;
+  x -= r.pcsChuck * r.unitW;
 
+  // 초기 구분자
   step++;
-  push(rp - p.tipWidth, p.tipWidth, '#636e72', 'AL 대기');
-  rp -= p.tipWidth;
+  S(x - p.tipWidth, p.tipWidth, '#636e72', 'AL 대기 #114');
+  x -= p.tipWidth;
 
-  // AL 사이클
+  // AL 사이클들
   for (let i = 0; i < r.autoPulls; i++) {
+    step++; S(0, 0, '#000', `🔄 AL ${i+1}회 인출`, true);
     step++;
-    push(0, 0, 'none', `🔄 AL ${i + 1}회 인출`, true);
-
-    step++;
-    push(rp - p.margin, p.margin, '#fdcb6e', `AL ${i + 1}회차 — 소재 이송`);
-    rp -= p.margin;
-
-    const offset = (i + 1) * r.pcsChuck;
+    S(x - p.margin, p.margin, '#fdcb6e', `AL ${i+1}회 마진 #123`);
+    x -= p.margin;
     for (let j = 0; j < r.pcsChuck; j++) {
       step++;
-      const pn = offset + j + 1;
-      const sl = rp - (j + 1) * r.unitW;
-      push(sl,              p.tipWidth, '#e17055', `#${pn} 파팅`);
-      push(sl + p.tipWidth, p.finLen,   '#00b894', `#${pn} 가공 완료 ✓`);
+      const pn  = (i + 1) * r.pcsChuck + j + 1;
+      const sx  = x - (j + 1) * r.unitW;
+      S(sx,              p.tipWidth, '#e17055', `#${pn} 파팅`);
+      S(sx + p.tipWidth, p.finLen,   '#00b894', `#${pn} 가공완료 ✓`);
     }
-    rp -= r.pcsChuck * r.unitW;
-
+    x -= r.pcsChuck * r.unitW;
     step++;
-    push(rp - p.tipWidth, p.tipWidth, '#636e72', 'AL 대기');
-    rp -= p.tipWidth;
+    S(x - p.tipWidth, p.tipWidth, '#636e72', 'AL 대기 #114');
+    x -= p.tipWidth;
   }
 
-  // [스크랩][#531][#530+#532][구분자][잔재] 순서
-  // 스크랩은 animDrawFrame에서 DZ와 함께 덮어 렌더
-  let lp = r.scrap + dead;  // 가공 가능 좌측 경계
-
+  // 잔재 (왼→오)
   if (r.remainPcs > 0) {
-    step++;
-    push(0, 0, 'none', '🔄 잔재 인출 (O9003)', true);
-
-    for (let j = r.remainPcs - 1; j >= 0; j--) {
+    step++; S(0, 0, '#000', '🔄 잔재 인출 (O9003)', true);
+    const pcsMain = r.pcsChuck * (1 + r.autoPulls);
+    let lx = (r.remainPcs > 0 ? r.scrap : r.scrap + p.tipWidth + p.margin)
+           + p.chuckLeft + p.safetyLen + p.chuck2jaw + p.residual;
+    for (let j = 0; j < r.remainPcs; j++) {
       step++;
-      const pn = (1 + r.autoPulls) * r.pcsChuck + (r.remainPcs - j);
-      push(lp,              p.tipWidth, '#e17055', `잔재 #${pn} 파팅`);
-      push(lp + p.tipWidth, p.finLen,   '#0984e3', `잔재 #${pn} 완료 ✓`);
-      lp += r.unitW;
+      const pn = pcsMain + j + 1;
+      S(lx,              p.tipWidth, '#e17055', `잔재#${pn} 파팅`);
+      S(lx + p.tipWidth, p.finLen,   '#0984e3', `잔재#${pn} 완료 ✓`);
+      lx += r.unitW;
     }
-
     step++;
-    push(lp,            p.margin,   '#fdcb6e', 'AL마진 #123');
-    push(lp + p.margin, p.tipWidth, '#636e72', '#114 위치구분');
-    lp += p.tipWidth + p.margin;
+    S(lx, p.margin,   '#fdcb6e', 'AL마진 #123');
+    S(lx + p.margin, p.tipWidth, '#636e72', '구분 #114');
   }
 
-  // 완료 이벤트
+  // 완료
   step++;
-  push(0, 0, 'none', `✅ 가공 완료 — 총 ${r.total}개`, true);
+  S(0, 0, '#000', `✅ 가공완료 — 총 ${r.total}개`, true);
 
   return { segs, maxStep: step };
 }
 
-function animDrawFrame() {
-  const p      = AN.p;
-  const matLen = AN.matLen;
-  const cur    = AN.current;
-  const W      = Math.max(document.getElementById('animCanvas').clientWidth || 300, 200);
-  const sc     = (W - 2) / matLen;
-  const BH     = 48;
-  const dead   = (p.chuckLeft + p.chuck2jaw + p.safetyLen) + p.residual;
+function animDraw() {
+  const p  = AN.p, matLen = AN.matLen, cur = AN.cur;
+  const W  = Math.max(document.getElementById('animCanvas').clientWidth || 300, 200);
+  const sc = (W - 2) / matLen;
+  const BH = 48;
 
-  const visible = AN.segs.filter(s => !s.isEvent && s.step <= cur && s.w > 0.01);
+  const r       = AN.r;
+  const scrapVz = r.remainPcs > 0 ? r.scrap : r.scrap + p.tipWidth + p.margin;
 
+  const vis = AN.segs.filter(s => !s.isEv && s.step <= cur && s.w > 0.01);
   let svg = '';
-  visible.forEach(s => {
+  vis.forEach(s => {
     const px  = (1 + s.x * sc).toFixed(1);
     const pw  = Math.max(s.w * sc, 0.5).toFixed(1);
     const isNew = s.step === cur;
@@ -844,117 +551,89 @@ function animDrawFrame() {
       stroke="${isNew ? '#fff' : '#0a0a1a'}" stroke-width="${isNew ? 1.5 : 0.2}" opacity="${isNew ? 1 : 0.88}"/>`;
   });
 
-  // 왼쪽 구간 덮기: [스크랩][#531 조물림][#530+#532 조바깥]
-  const scrapW  = AN.r.scrap * sc;
-  const jaw531W = Math.max(p.chuckLeft * sc, 1);
-  const jawOutW = Math.max((p.safetyLen + p.chuck2jaw) * sc, 1);
-  const scrapPx = 1, jaw531Px = scrapPx + scrapW, jawOutPx = jaw531Px + jaw531W;
-
-  if (AN.r.scrap > 0.05) {
-    svg += `<rect x="${scrapPx}" y="0" width="${scrapW.toFixed(1)}" height="${BH}" fill="#d63031" stroke="#0a0a1a" stroke-width="0.5"/>`;
-    if (scrapW > 18) svg += `<text x="${(scrapPx+scrapW/2).toFixed(1)}" y="${BH/2+4}" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">${Math.round(AN.r.scrap)}</text>`;
+  // DZ overlay (항상 위에 렌더)
+  let lx = 1;
+  const scW = scrapVz * sc;
+  if (scrapVz > 0.05) {
+    svg += `<rect x="${lx}" y="0" width="${scW.toFixed(1)}" height="${BH}" fill="#d63031" stroke="#0a0a1a" stroke-width="0.5"/>`;
+    if (scW > 18) svg += `<text x="${(lx+scW/2).toFixed(1)}" y="${BH/2+4}" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">${Math.round(scrapVz)}</text>`;
   }
-  svg += `<rect x="${jaw531Px.toFixed(1)}" y="0" width="${jaw531W.toFixed(1)}" height="${BH}" fill="#7c1a1a" stroke="#e94560" stroke-width="1"/>`;
-  if (jaw531W > 14) svg += `<text x="${(jaw531Px+jaw531W/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">#531</text><text x="${(jaw531Px+jaw531W/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${Math.round(p.chuckLeft)}</text>`;
-  svg += `<rect x="${jawOutPx.toFixed(1)}" y="0" width="${jawOutW.toFixed(1)}" height="${BH}" fill="#3d0c0c" stroke="#e94560" stroke-width="1"/>`;
-  if (jawOutW > 18) svg += `<text x="${(jawOutPx+jawOutW/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">#530+532</text><text x="${(jawOutPx+jawOutW/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${Math.round(p.safetyLen+p.chuck2jaw)}</text>`;
+  lx += scW;
+  const j531w = Math.max(p.chuckLeft * sc, 1);
+  svg += `<rect x="${lx.toFixed(1)}" y="0" width="${j531w.toFixed(1)}" height="${BH}" fill="#7c1a1a" stroke="#e94560" stroke-width="1"/>`;
+  if (j531w > 14) svg += `<text x="${(lx+j531w/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">#531</text><text x="${(lx+j531w/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${Math.round(p.chuckLeft)}</text>`;
+  lx += j531w;
+  const jOw = Math.max((p.safetyLen + p.chuck2jaw) * sc, 1);
+  svg += `<rect x="${lx.toFixed(1)}" y="0" width="${jOw.toFixed(1)}" height="${BH}" fill="#3d0c0c" stroke="#e94560" stroke-width="1"/>`;
+  if (jOw > 18) svg += `<text x="${(lx+jOw/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">#530+532</text><text x="${(lx+jOw/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${(p.safetyLen+p.chuck2jaw).toFixed(1)}</text>`;
 
-  const dzX = (1 + (AN.r.scrap + dead) * sc).toFixed(1);
-  svg += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#e94560" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>`;
-  svg += `<text x="3" y="${BH - 5}" fill="#e94560" font-size="8">척</text>`;
-  svg += `<text x="${W - 30}" y="${BH - 5}" fill="#555" font-size="8">face</text>`;
+  const dzX = (1 + (scrapVz + r.deadZone + p.residual) * sc).toFixed(1);
+  svg += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#e94560" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+  svg += `<text x="3" y="${BH-5}" fill="#e94560" font-size="8">척</text>`;
+  svg += `<text x="${W-30}" y="${BH-5}" fill="#555" font-size="8">face</text>`;
 
   document.getElementById('animCanvas').innerHTML =
     `<svg width="${W}" height="${BH}" style="display:block;border-radius:6px;overflow:hidden;border:1px solid #333;background:#0d0d1a">${svg}</svg>`;
 
-  // 이벤트 텍스트
-  const curEvs = AN.segs.filter(s => s.step === cur && s.event);
-  const evText = curEvs.length ? curEvs[curEvs.length - 1].event : '';
-  const evBox  = document.getElementById('animEvent');
-  evBox.textContent = evText || (cur === 0 ? '재생 버튼을 눌러 시작' : '');
-  evBox.className   = 'anim-event-box' +
-    (evText.includes('AL') || evText.includes('잔재') ? ' flash-al' : '') +
-    (evText.includes('완료') ? ' flash-done' : '');
+  const evs  = AN.segs.filter(s => s.step === cur && s.ev);
+  const evTxt = evs.length ? evs[evs.length - 1].ev : (cur === 0 ? '재생 버튼을 눌러 시작' : '');
+  const evEl  = document.getElementById('animEvent');
+  evEl.textContent = evTxt;
+  evEl.className   = 'anim-event' +
+    (evTxt.includes('AL') || evTxt.includes('잔재') ? ' al' : '') +
+    (evTxt.includes('완료') ? ' done' : '');
 
-  // 진행률
   const pct = AN.maxStep > 0 ? Math.round(cur / AN.maxStep * 100) : 0;
-  document.getElementById('animProgress').style.width = pct + '%';
-  document.getElementById('animStep').textContent     = `${cur} / ${AN.maxStep}`;
+  document.getElementById('animProg').style.width = pct + '%';
+  document.getElementById('animStep').textContent = `${cur} / ${AN.maxStep}`;
 }
 
 function animInit() {
-  const p      = G.p || getParams();
+  const p      = G.p || getP();
   const v102   = parseInt(document.getElementById('q102').value);
   const v101   = parseInt(document.getElementById('q101').value) || 0;
   const matLen = v102 + v101;
-  const r      = calcPieces(p, matLen);
+  const r      = calc(p, matLen);
   if (!r) return false;
-
-  if (AN.timerId) { clearInterval(AN.timerId); AN.timerId = null; }
-  const built = buildAnimSegs(p, matLen, r);
-  AN.segs    = built.segs;
-  AN.maxStep = built.maxStep;
-  AN.matLen  = matLen;
-  AN.p       = p;
-  AN.r       = r;
-  AN.current = 0;
+  if (AN.tid) { clearInterval(AN.tid); AN.tid = null; }
+  const built  = buildAnimSegs(p, matLen, r);
+  AN.segs = built.segs; AN.maxStep = built.maxStep;
+  AN.matLen = matLen; AN.p = p; AN.r = r; AN.cur = 0;
   return true;
 }
 
 function animPlay() {
-  if (AN.timerId) return;   // 이미 재생 중
-  if (AN.current === 0 || AN.current >= AN.maxStep) {
-    if (!animInit()) return;
-  }
-  const speed = parseInt(document.getElementById('animSpeed').value);
-  AN.timerId = setInterval(() => {
-    if (AN.current >= AN.maxStep) {
-      clearInterval(AN.timerId);
-      AN.timerId = null;
-      return;
-    }
-    AN.current++;
-    animDrawFrame();
-  }, speed);
+  if (AN.tid) return;
+  if (AN.cur === 0 || AN.cur >= AN.maxStep) { if (!animInit()) return; }
+  const spd = parseInt(document.getElementById('animSpd').value);
+  AN.tid = setInterval(() => {
+    if (AN.cur >= AN.maxStep) { clearInterval(AN.tid); AN.tid = null; return; }
+    AN.cur++; animDraw();
+  }, spd);
 }
+function animPause() { if (AN.tid) { clearInterval(AN.tid); AN.tid = null; } }
+function animReset() { animPause(); if (animInit()) animDraw(); }
 
-function animPause() {
-  if (AN.timerId) { clearInterval(AN.timerId); AN.timerId = null; }
-}
-
-function animReset() {
-  animPause();
-  if (!animInit()) return;
-  animDrawFrame();
-}
-
-/* ─────────────────────────────────────────────
-   기존 로직
-───────────────────────────────────────────── */
+/* ── 계산하기 ── */
 function calculate() {
-  const p = getParams();
+  const p = getP();
   const unitW    = p.finLen + p.tipWidth;
   const deadZone = p.chuckLeft + p.chuck2jaw + p.safetyLen;
   const pcsChuck = Math.floor((p.chuckInit - p.safetyLen) / unitW);
   const chuckOpt = pcsChuck * unitW + p.safetyLen;
-  const effLen   = chuckOpt - p.safetyLen;
+  G = { p, unitW, deadZone, pcsChuck, chuckOpt };
 
-  G = { p, unitW, deadZone, pcsChuck, chuckOpt, effLen };
-
-  const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS40', 'CM'][p.matType] || '기타';
+  const matName = p.residual > 0 ? 'RS40' : ['','CN','RS40','CM'][p.matType] || '기타';
   document.getElementById('chuckInfo').innerHTML = `
     <div><div class="val">${pcsChuck}</div><div class="lbl">척당 개수</div></div>
     <div><div class="val">${chuckOpt}</div><div class="lbl">최적 척길이</div></div>
     <div><div class="val">${unitW}</div><div class="lbl">단위폭(mm)</div></div>
-    <div><div class="val">${matName}</div><div class="lbl">소재</div></div>
-  `;
-  document.getElementById('tableTitle').textContent =
-    `#102 기준 범위표 (${matName}, ${unitW}mm 피치)`;
+    <div><div class="val">${matName}</div><div class="lbl">소재</div></div>`;
+  document.getElementById('tableTitle').textContent = `#102 기준 범위표 (${matName}, ${unitW}mm 피치)`;
 
   const tbody = document.getElementById('rangeBody');
   tbody.innerHTML = '';
-
-  [0, 100, 200, 300, 400, 500].forEach(v102 => {
+  [0,100,200,300,400,500].forEach(v102 => {
     const hdr = document.createElement('tr');
     hdr.innerHTML = `<td colspan="5" style="background:#0f3460;color:#e94560;font-weight:bold;text-align:left;padding:10px">#102 = ${v102}</td>`;
     tbody.appendChild(hdr);
@@ -964,100 +643,78 @@ function calculate() {
     const groups = [];
 
     for (let v101 = 0; v101 < 100; v101++) {
-      const matLen = v102 + v101;
-      const r = calcPieces(p, matLen);
+      const r = calc(p, v102 + v101);
       if (!r) continue;
-
       if (r.total !== prevTotal) {
-        if (groupStart !== null)
-          groups.push({ s: groupStart, e: prevV101, total: prevTotal, auto: prevAuto, remain: prevRemain, scrap: prevScrap });
-        groupStart = v101;
-        prevTotal  = r.total;
+        if (groupStart !== null) groups.push({ s: groupStart, e: prevV101, total: prevTotal, auto: prevAuto, remain: prevRemain, scrap: prevScrap });
+        groupStart = v101; prevTotal = r.total;
       }
-      prevV101  = v101;
-      prevAuto  = r.autoPulls;
-      prevRemain = r.remainPcs;
-      prevScrap  = r.scrap;
+      prevV101 = v101; prevAuto = r.autoPulls; prevRemain = r.remainPcs; prevScrap = r.scrap;
     }
-    if (groupStart !== null)
-      groups.push({ s: groupStart, e: prevV101, total: prevTotal, auto: prevAuto, remain: prevRemain, scrap: prevScrap });
+    if (groupStart !== null) groups.push({ s: groupStart, e: prevV101, total: prevTotal, auto: prevAuto, remain: prevRemain, scrap: prevScrap });
 
     groups.forEach(g => {
-      const isAlMatch = g.remain === 0 && g.auto > 0;
+      const isAl = g.remain === 0 && g.auto > 0;
       const tr = document.createElement('tr');
-      if (isAlMatch) tr.classList.add('highlight');
+      if (isAl) tr.classList.add('hl');
       tr.innerHTML = `
-        <td>${v102 + g.s}~${v102 + g.e}mm<br><span style="color:#666;font-size:10px">#101=${g.s}~${g.e}</span></td>
+        <td>${v102+g.s}~${v102+g.e}mm<br><span style="color:#666;font-size:10px">#101=${g.s}~${g.e}</span></td>
         <td class="pcs">${g.total}</td>
         <td>${g.auto}</td>
         <td>${g.remain}</td>
-        <td>${g.scrap.toFixed(1)}mm${isAlMatch ? '<br><span class="al-match">AL 딱맞음</span>' : ''}</td>
-      `;
+        <td>${g.scrap.toFixed(1)}mm${isAl ? '<br><span class="al-match">AL 딱맞음</span>' : ''}</td>`;
       tbody.appendChild(tr);
     });
   });
 
-  const deadZoneVal = deadZone + p.residual;
-  let dzHtml = `
-    <b style="color:#aaa">조(jaw)가 물고 있는 구간:</b><br>
-    &nbsp;&nbsp;스크랩 (가공 후 자투리)<br>
-    &nbsp;&nbsp;+ 최소물림(#531): <b>${p.chuckLeft}mm</b> ← 조가 최소한 이만큼 물어야 함<br>
-    <br>
+  const dzVal = deadZone + p.residual;
+  document.getElementById('dzInfo').innerHTML = `
+    <b style="color:#aaa">조가 물고 있는 구간:</b><br>
+    &nbsp; 스크랩 (자투리) + 최소물림 <b>#531: ${p.chuckLeft}mm</b><br><br>
     <b style="color:#aaa">조 바깥쪽 (물고 있지 않음):</b><br>
-    &nbsp;&nbsp;안전거리(#530): <b>${p.safetyLen}mm</b> ← 충돌 방지 여유<br>
-    &nbsp;&nbsp;척투조거리(#532): <b>${p.chuck2jaw}mm</b> ← 척 본체~조 사이<br>
-  `;
-  if (p.residual > 0) dzHtml += `<br>잔재 안전값(#129): <b>${p.residual}mm</b> ← RS40 추가<br>`;
-  dzHtml += `<hr style="border-color:#333;margin:8px 0">`;
-  dzHtml += `<span class="total">데드존 합계: ${deadZoneVal}mm 못 씀</span><br><br>`;
-  dzHtml += `+ 페이스컷(#104): ${p.faceCut}mm (첫 가공)<br>`;
-  dzHtml += `+ 마진(#123): ${p.margin}mm (오토링크마다)<br>`;
-  dzHtml += `+ 팁폭(#114): ${p.tipWidth}mm (잔재 인출 시)`;
-  document.getElementById('deadZoneInfo').innerHTML = dzHtml;
+    &nbsp; 안전거리 <b>#530: ${p.safetyLen}mm</b><br>
+    &nbsp; 척투조 <b>#532: ${p.chuck2jaw}mm</b><br>
+    ${p.residual > 0 ? `<br>잔재안전 <b>#129: ${p.residual}mm</b> (RS40)<br>` : ''}
+    <hr style="border-color:#333;margin:8px 0">
+    <span class="total">데드존 합계: ${dzVal}mm</span><br><br>
+    + 페이스컷 <b>#104: ${p.faceCut}mm</b> (첫 가공 단면)<br>
+    + 마진 <b>#123: ${p.margin}mm</b> × AL 횟수<br>
+    + 팁폭 <b>#114: ${p.tipWidth}mm</b> × (AL+잔재) 횟수`;
 
   quickCalc();
   switchTab('table');
 }
 
 function quickCalc() {
-  const p    = getParams();
-  const v102 = parseInt(document.getElementById('q102').value);
-  const v101 = parseInt(document.getElementById('q101').value) || 0;
+  const p      = getP();
+  const v102   = parseInt(document.getElementById('q102').value);
+  const v101   = parseInt(document.getElementById('q101').value) || 0;
   const matLen = v102 + v101;
-  const r    = calcPieces(p, matLen);
-  const el   = document.getElementById('quickResult');
+  const r      = calc(p, matLen);
+  const el     = document.getElementById('quickResult');
 
   if (!r) {
-    el.innerHTML = `<div class="big">--</div><div class="detail">소재 길이 부족 (최소 ${Math.ceil(p.chuckInit)}mm 이상)</div>`;
+    el.innerHTML = `<div class="big">--</div><div class="detail">소재 길이 부족</div>`;
   } else {
-    const matName = p.residual > 0 ? 'RS40' : ['', 'CN', 'RS40', 'CM'][p.matType] || '기타';
+    const matName = p.residual > 0 ? 'RS40' : ['','CN','RS40','CM'][p.matType] || '기타';
     el.innerHTML = `
       <div class="big">${r.total}개</div>
-      <div class="detail">
-        소재 ${matLen}mm (${matName}) | 오토링크 ${r.autoPulls}회 | 잔재 ${r.remainPcs}개 | 버림 ${r.scrap.toFixed(1)}mm
-      </div>
-    `;
+      <div class="detail">${matLen}mm (${matName}) | AL ${r.autoPulls}회 | 잔재 ${r.remainPcs}개 | 버림 ${r.scrap.toFixed(1)}mm</div>`;
   }
 
-  // 시각화 탭이 열려있으면 갱신
-  if (document.getElementById('tab-viz').classList.contains('active')) {
-    renderViz();
-  }
+  if (document.getElementById('tab-viz').classList.contains('active')) renderViz();
 }
 
 function switchTab(name) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-bar button').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-bar .btn').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  const tabs = ['settings', 'table', 'deadzone', 'viz'];
-  document.querySelectorAll('.tab-bar button')[tabs.indexOf(name)].classList.add('active');
+  const tabs = ['settings','table','deadzone','viz'];
+  document.querySelectorAll('.tab-bar .btn')[tabs.indexOf(name)].classList.add('active');
   if (name === 'viz') { renderViz(); animReset(); }
 }
 
-window.onload = function () {
-  calculate();
-  switchTab('settings');
-};
+window.onload = function () { calculate(); switchTab('settings'); };
 </script>
 </body>
 </html>
