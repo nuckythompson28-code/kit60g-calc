@@ -616,7 +616,7 @@ function renderViz() {
 
   let svgInner = '';
   segs.forEach(s => {
-    const px = (1 + (matLen - s.x - s.w) * sc).toFixed(1);  // 좌우 반전
+    const px = (1 + s.x * sc).toFixed(1);
     const pw = Math.max(s.w * sc, 0.5).toFixed(1);
     svgInner += `<rect x="${px}" y="0" width="${pw}" height="${BH}" fill="${s.c}" stroke="#0a0a1a" stroke-width="0.2"/>`;
     if (parseFloat(pw) > 14 && s.lbl) {
@@ -626,13 +626,13 @@ function renderViz() {
     }
   });
 
-  // 데드존 경계선 (오른쪽)
-  const dzX = (1 + (matLen - deadTotal) * sc).toFixed(1);
+  // 데드존 경계선 (왼쪽)
+  const dzX = (1 + deadTotal * sc).toFixed(1);
   svgInner += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#fff" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>`;
 
-  // face=왼쪽, tail=오른쪽
-  svgInner += `<text x="3" y="${BH - 5}" fill="#555" font-size="8">face</text>`;
-  svgInner += `<text x="${W - 30}" y="${BH - 5}" fill="#555" font-size="8">tail</text>`;
+  // 척=왼쪽, face=오른쪽
+  svgInner += `<text x="3" y="${BH - 5}" fill="#555" font-size="8">척</text>`;
+  svgInner += `<text x="${W - 30}" y="${BH - 5}" fill="#555" font-size="8">face</text>`;
 
   barEl.innerHTML =
     `<svg width="${W}" height="${BH}" style="display:block;border-radius:6px;overflow:hidden;border:1px solid #333">${svgInner}</svg>
@@ -830,18 +830,18 @@ function animDrawFrame() {
 
   let svg = '';
   visible.forEach(s => {
-    const px  = (1 + (matLen - s.x - s.w) * sc).toFixed(1);  // 좌우 반전
+    const px  = (1 + s.x * sc).toFixed(1);
     const pw  = Math.max(s.w * sc, 0.5).toFixed(1);
     const isNew = s.step === cur;
     svg += `<rect x="${px}" y="0" width="${pw}" height="${BH}" fill="${s.c}"
       stroke="${isNew ? '#fff' : '#0a0a1a'}" stroke-width="${isNew ? 1.5 : 0.2}" opacity="${isNew ? 1 : 0.88}"/>`;
   });
 
-  // 데드존 경계선 (오른쪽)
-  const dzX = (1 + (matLen - dead) * sc).toFixed(1);
+  // 데드존 경계선 (왼쪽)
+  const dzX = (1 + dead * sc).toFixed(1);
   svg += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#fff" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.4"/>`;
-  svg += `<text x="3" y="${BH - 5}" fill="#444" font-size="8">face</text>`;
-  svg += `<text x="${W - 30}" y="${BH - 5}" fill="#444" font-size="8">tail</text>`;
+  svg += `<text x="3" y="${BH - 5}" fill="#444" font-size="8">척</text>`;
+  svg += `<text x="${W - 30}" y="${BH - 5}" fill="#444" font-size="8">face</text>`;
 
   document.getElementById('animCanvas').innerHTML =
     `<svg width="${W}" height="${BH}" style="display:block;border-radius:6px;overflow:hidden;border:1px solid #333;background:#0d0d1a">${svg}</svg>`;
