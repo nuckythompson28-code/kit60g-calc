@@ -729,8 +729,18 @@ function buildAnimSegs(p, matLen, r) {
 
   const push = (x, w, c, ev, isEv) => segs.push({ step, x, w, c, event: ev || '', isEvent: !!isEv });
 
-  // 데드존 (항상)
+  // ── step 0: 배경 (항상 보임) ──
+  // 전체 소재 바 (raw material)
+  push(0, matLen, '#1e1e35', '');
+  // 데드존
   push(0, dead, '#2d3436', '');
+
+  // 스크랩 위치 미리 계산 → step 0에 어둡게 표시
+  let rpFinal = matLen - p.faceCut - r.pcsChuck * r.unitW - p.tipWidth;
+  for (let i = 0; i < r.autoPulls; i++) rpFinal -= p.margin + r.pcsChuck * r.unitW + p.tipWidth;
+  let lpFinal = dead;
+  if (r.remainPcs > 0) lpFinal += p.tipWidth + p.margin + r.remainPcs * r.unitW;
+  if (rpFinal > lpFinal + 0.05) push(lpFinal, rpFinal - lpFinal, '#3a1515', '');
 
   // 페이스컷
   step = 1;
@@ -794,7 +804,7 @@ function buildAnimSegs(p, matLen, r) {
     }
   }
 
-  // 스크랩
+  // 스크랩 (step 0 배경 위에 확정색으로 덮기)
   if (rp > lp + 0.05) {
     step++;
     push(lp, rp - lp, '#d63031', `⚠ 스크랩 ${r.scrap.toFixed(1)}mm`);
