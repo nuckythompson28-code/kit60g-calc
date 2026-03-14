@@ -181,6 +181,72 @@ button:active { background: #c73550; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
+/* ===== 애니메이션 ===== */
+.anim-section {
+  margin-top: 16px;
+  border-top: 1px solid #333;
+  padding-top: 14px;
+}
+.anim-event-box {
+  background: #0a0a1a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #00d4ff;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  border: 1px solid #333;
+  transition: background 0.2s;
+}
+.anim-event-box.flash-al  { background: #2d1f00; border-color: #fdcb6e; color: #fdcb6e; }
+.anim-event-box.flash-done { background: #001a10; border-color: #00b894; color: #00b894; }
+.anim-progress-wrap {
+  display: flex;
+  align-items: center;
+  margin: 6px 0 10px;
+}
+.anim-progress-bg {
+  flex: 1;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.anim-progress-bar {
+  height: 100%;
+  background: #e94560;
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.1s;
+}
+.anim-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.anim-btn {
+  flex: 1;
+  padding: 10px 4px;
+  font-size: 12px;
+  background: #16213e;
+  border-radius: 8px;
+  margin: 0;
+  width: auto;
+}
+.anim-btn:active { background: #0f3460; }
+.anim-select {
+  padding: 8px 6px;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #0f3460;
+  color: #fff;
+  font-size: 12px;
+  -webkit-appearance: none;
+}
+
 /* ===== 시각화 탭 ===== */
 .viz-bar-wrap {
   background: #1a1a2e;
@@ -369,6 +435,36 @@ button:active { background: #c73550; }
     <div class="viz-cycle-wrap">
       <h3>사이클별 상세</h3>
       <div id="vizCycles"></div>
+    </div>
+
+    <!-- 애니메이션 -->
+    <div class="anim-section">
+      <h3 style="font-size:13px;color:#00d4ff;margin-bottom:10px">▶ 가공 애니메이션</h3>
+
+      <div class="anim-event-box">
+        <span id="animEvent">재생 버튼을 눌러 시작</span>
+      </div>
+
+      <div id="animCanvas" style="margin:8px 0"></div>
+
+      <div class="anim-progress-wrap">
+        <div class="anim-progress-bg">
+          <div class="anim-progress-bar" id="animProgress"></div>
+        </div>
+        <span id="animStep" style="font-size:11px;color:#666;margin-left:6px">0/0</span>
+      </div>
+
+      <div class="anim-controls">
+        <button class="anim-btn" onclick="animPlay()">▶ 재생</button>
+        <button class="anim-btn" onclick="animPause()">⏸ 정지</button>
+        <button class="anim-btn" onclick="animReset()">↺ 초기화</button>
+        <select id="animSpeed" class="anim-select">
+          <option value="400">느림</option>
+          <option value="180" selected>보통</option>
+          <option value="70">빠름</option>
+          <option value="20">초고속</option>
+        </select>
+      </div>
     </div>
   </div>
 </div>
@@ -622,6 +718,184 @@ function renderViz() {
 }
 
 /* ─────────────────────────────────────────────
+   애니메이션
+───────────────────────────────────────────── */
+let AN = { segs: [], maxStep: 0, current: 0, timerId: null, matLen: 0, p: null };
+
+function buildAnimSegs(p, matLen, r) {
+  const segs = [];
+  const dead = p.deadZone + p.residual;
+  let step = 0;
+
+  const push = (x, w, c, ev, isEv) => segs.push({ step, x, w, c, event: ev || '', isEvent: !!isEv });
+
+  // 데드존 (항상)
+  push(0, dead, '#2d3436', '');
+
+  // 페이스컷
+  step = 1;
+  let rp = matLen;
+  push(rp - p.faceCut, p.faceCut, '#6c5ce7', '✂ 페이스컷');
+  rp -= p.faceCut;
+
+  // 초기 사이클
+  for (let j = 0; j < r.pcsChuck; j++) {
+    step++;
+    const sl = rp - (j + 1) * r.unitW;
+    push(sl,              p.tipWidth, '#e17055', `#${j + 1} 파팅`);
+    push(sl + p.tipWidth, p.finLen,   '#00b894', `#${j + 1} 가공 완료 ✓`);
+  }
+  rp -= r.pcsChuck * r.unitW;
+
+  step++;
+  push(rp - p.tipWidth, p.tipWidth, '#636e72', 'AL 대기');
+  rp -= p.tipWidth;
+
+  // AL 사이클
+  for (let i = 0; i < r.autoPulls; i++) {
+    step++;
+    push(0, 0, 'none', `🔄 AL ${i + 1}회 인출`, true);
+
+    step++;
+    push(rp - p.margin, p.margin, '#fdcb6e', `AL ${i + 1}회차 — 소재 이송`);
+    rp -= p.margin;
+
+    const offset = (i + 1) * r.pcsChuck;
+    for (let j = 0; j < r.pcsChuck; j++) {
+      step++;
+      const pn = offset + j + 1;
+      const sl = rp - (j + 1) * r.unitW;
+      push(sl,              p.tipWidth, '#e17055', `#${pn} 파팅`);
+      push(sl + p.tipWidth, p.finLen,   '#00b894', `#${pn} 가공 완료 ✓`);
+    }
+    rp -= r.pcsChuck * r.unitW;
+
+    step++;
+    push(rp - p.tipWidth, p.tipWidth, '#636e72', 'AL 대기');
+    rp -= p.tipWidth;
+  }
+
+  // 잔재
+  let lp = dead;
+  if (r.remainPcs > 0) {
+    step++;
+    push(0, 0, 'none', '🔄 잔재 인출 (O9003)', true);
+
+    step++;
+    push(lp, p.tipWidth + p.margin, '#fdcb6e', '잔재 구분자');
+    lp += p.tipWidth + p.margin;
+
+    for (let j = r.remainPcs - 1; j >= 0; j--) {
+      step++;
+      const pn = (1 + r.autoPulls) * r.pcsChuck + (r.remainPcs - j);
+      push(lp,              p.tipWidth, '#e17055', `잔재 #${pn} 파팅`);
+      push(lp + p.tipWidth, p.finLen,   '#0984e3', `잔재 #${pn} 완료 ✓`);
+      lp += r.unitW;
+    }
+  }
+
+  // 스크랩
+  if (rp > lp + 0.05) {
+    step++;
+    push(lp, rp - lp, '#d63031', `⚠ 스크랩 ${r.scrap.toFixed(1)}mm`);
+  }
+
+  // 완료 이벤트
+  step++;
+  push(0, 0, 'none', `✅ 가공 완료 — 총 ${r.total}개`, true);
+
+  return { segs, maxStep: step };
+}
+
+function animDrawFrame() {
+  const p      = AN.p;
+  const matLen = AN.matLen;
+  const cur    = AN.current;
+  const W      = Math.max(document.getElementById('animCanvas').clientWidth || 300, 200);
+  const sc     = (W - 2) / matLen;
+  const BH     = 48;
+  const dead   = p.deadZone + p.residual;
+
+  const visible = AN.segs.filter(s => !s.isEvent && s.step <= cur && s.w > 0.01);
+
+  let svg = '';
+  visible.forEach(s => {
+    const px  = (1 + s.x * sc).toFixed(1);
+    const pw  = Math.max(s.w * sc, 0.5).toFixed(1);
+    const isNew = s.step === cur;
+    svg += `<rect x="${px}" y="0" width="${pw}" height="${BH}" fill="${s.c}"
+      stroke="${isNew ? '#fff' : '#0a0a1a'}" stroke-width="${isNew ? 1.5 : 0.2}" opacity="${isNew ? 1 : 0.88}"/>`;
+  });
+
+  const dzX = (1 + dead * sc).toFixed(1);
+  svg += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#fff" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.4"/>`;
+  svg += `<text x="3" y="${BH - 5}" fill="#444" font-size="8">tail</text>`;
+  svg += `<text x="${W - 28}" y="${BH - 5}" fill="#444" font-size="8">face</text>`;
+
+  document.getElementById('animCanvas').innerHTML =
+    `<svg width="${W}" height="${BH}" style="display:block;border-radius:6px;overflow:hidden;border:1px solid #333;background:#0d0d1a">${svg}</svg>`;
+
+  // 이벤트 텍스트
+  const curEvs = AN.segs.filter(s => s.step === cur && s.event);
+  const evText = curEvs.length ? curEvs[curEvs.length - 1].event : '';
+  const evBox  = document.getElementById('animEvent');
+  evBox.textContent = evText || (cur === 0 ? '재생 버튼을 눌러 시작' : '');
+  evBox.className   = 'anim-event-box' +
+    (evText.includes('AL') || evText.includes('잔재') ? ' flash-al' : '') +
+    (evText.includes('완료') ? ' flash-done' : '');
+
+  // 진행률
+  const pct = AN.maxStep > 0 ? Math.round(cur / AN.maxStep * 100) : 0;
+  document.getElementById('animProgress').style.width = pct + '%';
+  document.getElementById('animStep').textContent     = `${cur} / ${AN.maxStep}`;
+}
+
+function animInit() {
+  const p      = G.p || getParams();
+  const v102   = parseInt(document.getElementById('q102').value);
+  const v101   = parseInt(document.getElementById('q101').value) || 0;
+  const matLen = v102 + v101;
+  const r      = calcPieces(p, matLen);
+  if (!r) return false;
+
+  if (AN.timerId) { clearInterval(AN.timerId); AN.timerId = null; }
+  const built = buildAnimSegs(p, matLen, r);
+  AN.segs    = built.segs;
+  AN.maxStep = built.maxStep;
+  AN.matLen  = matLen;
+  AN.p       = p;
+  AN.current = 0;
+  return true;
+}
+
+function animPlay() {
+  if (AN.timerId) return;   // 이미 재생 중
+  if (AN.current === 0 || AN.current >= AN.maxStep) {
+    if (!animInit()) return;
+  }
+  const speed = parseInt(document.getElementById('animSpeed').value);
+  AN.timerId = setInterval(() => {
+    if (AN.current >= AN.maxStep) {
+      clearInterval(AN.timerId);
+      AN.timerId = null;
+      return;
+    }
+    AN.current++;
+    animDrawFrame();
+  }, speed);
+}
+
+function animPause() {
+  if (AN.timerId) { clearInterval(AN.timerId); AN.timerId = null; }
+}
+
+function animReset() {
+  animPause();
+  if (!animInit()) return;
+  animDrawFrame();
+}
+
+/* ─────────────────────────────────────────────
    기존 로직
 ───────────────────────────────────────────── */
 function calculate() {
@@ -740,7 +1014,7 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   const tabs = ['settings', 'table', 'deadzone', 'viz'];
   document.querySelectorAll('.tab-bar button')[tabs.indexOf(name)].classList.add('active');
-  if (name === 'viz') renderViz();
+  if (name === 'viz') { renderViz(); animReset(); }
 }
 
 window.onload = function () {
