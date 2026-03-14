@@ -588,24 +588,24 @@ function renderViz() {
     rp -= p.tipWidth;
   }
 
-  /* ── 왼쪽(tail)부터 계산 ── */
+  /* ── 왼쪽(척)부터 계산: [데드존][스크랩][구분자][잔재][메인] ── */
   let lp = deadTotal;
+
+  // 스크랩: 데드존 바로 옆 (잔재 가공 후 척쪽에 남는 자투리)
+  if (r.scrap > 0.05) {
+    push(lp, r.scrap, '#d63031', r.scrap > 3 ? '스크랩' : '');
+    lp += r.scrap;
+  }
 
   if (r.remainPcs > 0) {
     push(lp, p.tipWidth + p.margin, '#fdcb6e', '');
     lp += p.tipWidth + p.margin;
 
-    // 잔재 피스 (왼쪽=꼬리 방향 순서로)
     for (let j = r.remainPcs - 1; j >= 0; j--) {
       push(lp,              p.tipWidth, '#e17055', '');
       push(lp + p.tipWidth, p.finLen,   '#0984e3', '');
       lp += r.unitW;
     }
-  }
-
-  // 스크랩
-  if (rp > lp + 0.05) {
-    push(lp, rp - lp, '#d63031', r.scrap > 3 ? '스크랩' : '');
   }
 
   /* SVG 그리기 (데드존=왼쪽, face=오른쪽) */
@@ -739,12 +739,8 @@ function buildAnimSegs(p, matLen, r) {
   // 데드존 (animDrawFrame에서 별도로 덮어서 렌더하므로 여기선 배경용만)
   push(0, dead, '#1e1e35', '');
 
-  // 스크랩 위치 미리 계산 → step 0에 어둡게 표시
-  let rpFinal = matLen - p.faceCut - r.pcsChuck * r.unitW - p.tipWidth;
-  for (let i = 0; i < r.autoPulls; i++) rpFinal -= p.margin + r.pcsChuck * r.unitW + p.tipWidth;
-  let lpFinal = dead;
-  if (r.remainPcs > 0) lpFinal += p.tipWidth + p.margin + r.remainPcs * r.unitW;
-  if (rpFinal > lpFinal + 0.05) push(lpFinal, rpFinal - lpFinal, '#3a1515', '');
+  // 스크랩: 데드존 바로 옆에 미리 표시 (step 0 배경)
+  if (r.scrap > 0.05) push(dead, r.scrap, '#3a1515', '');
 
   // 페이스컷
   step = 1;
@@ -789,8 +785,16 @@ function buildAnimSegs(p, matLen, r) {
     rp -= p.tipWidth;
   }
 
-  // 잔재
+  // 잔재 + 스크랩: [데드존][스크랩][구분자][잔재] 순서
   let lp = dead;
+
+  // 스크랩 확정 렌더 (데드존 바로 옆)
+  if (r.scrap > 0.05) {
+    step++;
+    push(lp, r.scrap, '#d63031', `⚠ 스크랩 ${r.scrap.toFixed(1)}mm`);
+    lp += r.scrap;
+  }
+
   if (r.remainPcs > 0) {
     step++;
     push(0, 0, 'none', '🔄 잔재 인출 (O9003)', true);
@@ -806,12 +810,6 @@ function buildAnimSegs(p, matLen, r) {
       push(lp + p.tipWidth, p.finLen,   '#0984e3', `잔재 #${pn} 완료 ✓`);
       lp += r.unitW;
     }
-  }
-
-  // 스크랩 (step 0 배경 위에 확정색으로 덮기)
-  if (rp > lp + 0.05) {
-    step++;
-    push(lp, rp - lp, '#d63031', `⚠ 스크랩 ${r.scrap.toFixed(1)}mm`);
   }
 
   // 완료 이벤트
