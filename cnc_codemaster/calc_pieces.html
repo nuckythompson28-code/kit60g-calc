@@ -277,8 +277,11 @@ function buildSegs(p, matLen, r) {
   const S = (x, w, c, lbl) => { if (w > 0.01) segs.push({ x, w, c, lbl: lbl || '' }); };
   let x = 0;
 
-  // 잔재 없을 때: 구분자 공간(#114+#123)이 스크랩에 흡수됨
-  const scrapViz = r.remainPcs > 0 ? r.scrap : r.scrap + p.tipWidth + p.margin;
+  // 잔재 있을 때: #114(1개)는 첫 메인사이클 구분자로 처리 → scrap에 tipWidth 흡수
+  // 잔재 없을 때: #114+#123 전부 scrap에 흡수
+  const scrapViz = r.remainPcs > 0
+    ? r.scrap + p.tipWidth
+    : r.scrap + p.tipWidth + p.margin;
 
   // 1. 스크랩
   S(x, scrapViz, '#d63031', `스크랩 ${scrapViz.toFixed(1)}mm`);
@@ -307,13 +310,11 @@ function buildSegs(p, matLen, r) {
     x += r.unitW;
   }
 
-  // 6. 잔재/메인 구분자 (잔재 있을 때만)
-  //    마진#123 (노랑) + 구분#114 (회색)
+  // 6. 잔재/메인 구분자 (잔재 있을 때만) — 마진#123 노랑만
+  //    #114(회색)는 아래 메인사이클 첫 구분자가 담당
   if (r.remainPcs > 0) {
-    S(x, p.margin,   '#fdcb6e', 'AL마진 #123');
+    S(x, p.margin, '#fdcb6e', 'AL마진 #123');
     x += p.margin;
-    S(x, p.tipWidth, '#636e72', '구분 #114');
-    x += p.tipWidth;
   }
 
   // 7. 메인 사이클들 (왼=마지막AL, 오=초기척킹)
