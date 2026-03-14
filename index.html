@@ -616,18 +616,19 @@ function renderViz() {
     const px = (1 + s.x * sc).toFixed(1);
     const pw = Math.max(s.w * sc, 0.5).toFixed(1);
     svgInner += `<rect x="${px}" y="0" width="${pw}" height="${BH}" fill="${s.c}" stroke="#0a0a1a" stroke-width="0.2"/>`;
-    if (parseFloat(pw) > 14 && s.lbl) {
-      const fs = Math.min(9, parseFloat(pw) * 0.38);
+    if (parseFloat(pw) > 18) {
+      const fs = Math.min(9, parseFloat(pw) * 0.35);
       const cx = (parseFloat(px) + parseFloat(pw) / 2).toFixed(1);
-      svgInner += `<text x="${cx}" y="${BH / 2 + 4}" text-anchor="middle" fill="#fff" font-size="${fs}" font-weight="bold">${s.lbl}</text>`;
+      svgInner += `<text x="${cx}" y="${BH / 2 + 4}" text-anchor="middle" fill="#fff" font-size="${fs}" font-weight="bold">${Math.round(s.w)}</text>`;
     }
   });
 
-  // 데드존: 맨 위에 명시적으로 덮기 (빨간 테두리 + 항상 레이블)
+  // 데드존: 맨 위에 명시적으로 덮기 (빨간 테두리 + mm 숫자)
   const dzPw = Math.max(deadTotal * sc, 2);
   svgInner += `<rect x="1" y="0" width="${dzPw.toFixed(1)}" height="${BH}" fill="#3d0c0c" stroke="#e94560" stroke-width="1.5"/>`;
   const dzLabelX = (1 + dzPw / 2).toFixed(1);
-  svgInner += `<text x="${dzLabelX}" y="${BH / 2 + 4}" text-anchor="middle" fill="#e94560" font-size="${Math.min(9, dzPw * 0.4).toFixed(1)}" font-weight="bold">DZ</text>`;
+  const dzFs = Math.min(9, dzPw * 0.4).toFixed(1);
+  if (dzPw > 14) svgInner += `<text x="${dzLabelX}" y="${BH / 2 + 4}" text-anchor="middle" fill="#e94560" font-size="${dzFs}" font-weight="bold">${Math.round(deadTotal)}</text>`;
 
   // 데드존 경계선
   const dzX = (1 + deadTotal * sc).toFixed(1);
@@ -843,7 +844,7 @@ function animDrawFrame() {
   // 데드존: 항상 맨 위에 빨간 테두리로 덮기
   const dzPwA = Math.max(dead * sc, 2);
   svg += `<rect x="1" y="0" width="${dzPwA.toFixed(1)}" height="${BH}" fill="#3d0c0c" stroke="#e94560" stroke-width="1.5"/>`;
-  svg += `<text x="${(1 + dzPwA / 2).toFixed(1)}" y="${BH / 2 + 4}" text-anchor="middle" fill="#e94560" font-size="${Math.min(9, dzPwA * 0.4).toFixed(1)}" font-weight="bold">DZ</text>`;
+  if (dzPwA > 14) svg += `<text x="${(1 + dzPwA / 2).toFixed(1)}" y="${BH / 2 + 4}" text-anchor="middle" fill="#e94560" font-size="${Math.min(9, dzPwA * 0.4).toFixed(1)}" font-weight="bold">${Math.round(dead)}</text>`;
   const dzX = (1 + dead * sc).toFixed(1);
   svg += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#e94560" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>`;
   svg += `<text x="3" y="${BH - 5}" fill="#e94560" font-size="8">척</text>`;
