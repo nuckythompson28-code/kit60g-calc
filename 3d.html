@@ -219,10 +219,10 @@ function buildSegments(matLen) {
   push(P.chuckLeft, 'jawGrip', -1);
   push(P.chuck2jaw + P.safetyLen, 'safety', -1);
 
-  // Remaining pieces (residual)
+  // Remaining pieces (residual) — 파팅(왼) → 제품(오) 순서
   for (let i = 0; i < r.remainPcs; i++) {
-    push(P.finLen, 'residual', -2);
     push(P.tipWidth, 'parting', -2);
+    push(P.finLen, 'residual', -2);
   }
   if (r.remainPcs > 0) {
     push(P.margin, 'margin', -2);
@@ -231,16 +231,16 @@ function buildSegments(matLen) {
   // AL cycles (from last to first, since left = farther from face)
   for (let a = r.autoPulls; a >= 1; a--) {
     for (let i = 0; i < r.pcsChuck; i++) {
-      push(P.finLen, 'product', a);
       push(P.tipWidth, 'parting', a);
+      push(P.finLen, 'product', a);
     }
     push(P.margin, 'margin', a);
   }
 
-  // Initial chuck cycle
+  // Initial chuck cycle — 파팅(왼) → 제품(오)
   for (let i = 0; i < r.pcsChuck; i++) {
-    push(P.finLen, 'product', 0);
     push(P.tipWidth, 'parting', 0);
+    push(P.finLen, 'product', 0);
   }
 
   // Face cut
@@ -375,8 +375,8 @@ function buildAnimSteps() {
     }
 
     // Machine pieces right to left (face side first) for this cycle
+    // 제품의 왼쪽 파팅을 잘라야 제품이 떨어져 나감
     const sortedProducts = [...products].sort((a, b) => b.zStart - a.zStart);
-    const sortedPartings = [...partings].sort((a, b) => b.zStart - a.zStart);
 
     sortedProducts.forEach((prod, i) => {
       const pType = prod.type === 'residual' ? '잔여' : '';
@@ -384,9 +384,13 @@ function buildAnimSteps() {
         type: 'machine', seg: prod,
         label: `${pType}제품 가공 (${cyc >= 0 ? cyc + '사이클' : '잔여'} #${i + 1})`
       });
-      if (sortedPartings[i]) {
+      // 제품 왼쪽의 파팅 찾기 (zStart + len ≈ prod.zStart)
+      const leftParting = partings.find(
+        p => Math.abs((p.zStart + p.len) - prod.zStart) < 0.1
+      );
+      if (leftParting) {
         animSteps.push({
-          type: 'partCut', seg: sortedPartings[i], prodSeg: prod,
+          type: 'partCut', seg: leftParting, prodSeg: prod,
           label: '파팅 절단'
         });
       }
