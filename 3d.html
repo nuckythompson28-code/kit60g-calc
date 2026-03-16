@@ -371,34 +371,56 @@ function buildScene(matLen) {
   chuckGroup.position.z = initialChuckZ;
   scene.add(chuckGroup);
 
-  /* Parting Tool */
-  const toolMat = new THREE.MeshStandardMaterial({ color: COL.tool, metalness: 0.8, roughness: 0.2 });
-  const toolGeo = new THREE.BoxGeometry(2, 30, 1.5);
-  toolMesh = new THREE.Mesh(toolGeo, toolMat);
-  toolMesh.position.set(0, outerR + 20, stickoutLen / 2);
-  toolMesh.castShadow = true;
-  toolMesh.visible = false;
+  /* Parting Tool — 수직 절단바이트 (사진 기준: 위에서 내려오는 직사각 블레이드) */
+  const toolGroup = new THREE.Group();
+  const toolMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.2 });
+  // 홀더 (상단 사각 블록)
+  const holderGeo = new THREE.BoxGeometry(8, 14, 5);
+  const holder = new THREE.Mesh(holderGeo, toolMat);
+  holder.position.y = 10;
+  holder.castShadow = true;
+  toolGroup.add(holder);
+  // 블레이드 (얇은 직사각)
+  const bladeMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.9, roughness: 0.15 });
+  const bladeGeo = new THREE.BoxGeometry(1.5, 20, 3);
+  const blade = new THREE.Mesh(bladeGeo, bladeMat);
+  blade.castShadow = true;
+  toolGroup.add(blade);
+  // 인서트 팁 (하단 노란색)
+  const insertMat = new THREE.MeshStandardMaterial({ color: 0xf0c040, metalness: 0.5, roughness: 0.4 });
+  const insertGeo = new THREE.BoxGeometry(2, 3, 3.5);
+  const insert = new THREE.Mesh(insertGeo, insertMat);
+  insert.position.y = -10;
+  toolGroup.add(insert);
+  toolGroup.position.set(0, outerR + 20, stickoutLen / 2);
+  toolGroup.visible = false;
+  toolMesh = toolGroup;
   scene.add(toolMesh);
 
-  /* Boring Bar — 위아래 절단바이트 달린 보링바 */
+  /* Boring Bar — Z축 수평 원통형 바 (사진 기준: 정면에서 소재 안으로 진입) */
   const bbGroup = new THREE.Group();
-  const bbMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 });
+  const bbMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.7, roughness: 0.3 });
+  // 홀더 (사각 블록)
+  const bbHolderGeo = new THREE.BoxGeometry(10, 10, 15);
+  const bbHolder = new THREE.Mesh(bbHolderGeo, bbMat);
+  bbHolder.position.z = -12;
+  bbHolder.castShadow = true;
+  bbGroup.add(bbHolder);
+  // 원통형 보링바 본체 (Z축 방향)
+  const bbBarGeo = new THREE.CylinderGeometry(2, 2, P.finLen * 2, 16);
+  const bbBar = new THREE.Mesh(bbBarGeo, bbMat);
+  bbBar.rotation.x = Math.PI / 2; // Y축→Z축 방향
+  bbBar.castShadow = true;
+  bbGroup.add(bbBar);
+  // 선단 인서트 (앞쪽 팁)
   const bbTipMat = new THREE.MeshStandardMaterial({ color: 0xf0c040, metalness: 0.6, roughness: 0.4 });
-  // 바 본체 (긴 사각봉)
-  const bbBody = new THREE.Mesh(new THREE.BoxGeometry(3, 3, P.finLen * 1.2), bbMat);
-  bbGroup.add(bbBody);
-  // 상단 절단바이트
-  const tipGeo = new THREE.BoxGeometry(1.5, 2, 2);
-  const tipTop = new THREE.Mesh(tipGeo, bbTipMat);
-  tipTop.position.set(0, 2.5, P.finLen * 0.5);
-  bbGroup.add(tipTop);
-  // 하단 절단바이트
-  const tipBot = new THREE.Mesh(tipGeo, bbTipMat);
-  tipBot.position.set(0, -2.5, P.finLen * 0.5);
-  bbGroup.add(tipBot);
-  bbGroup.position.set(outerR + 25, 0, 0);
+  const bbTipGeo = new THREE.BoxGeometry(3, 3, 2);
+  const bbTip = new THREE.Mesh(bbTipGeo, bbTipMat);
+  bbTip.position.z = P.finLen;
+  bbGroup.add(bbTip);
+  // 초기 위치: 소재 우측 바깥 (Z축 양의 방향)
+  bbGroup.position.set(0, 0, stickoutLen + P.finLen * 2);
   bbGroup.visible = false;
-  bbGroup.castShadow = true;
   boringBarMesh = bbGroup;
   scene.add(boringBarMesh);
 
@@ -653,38 +675,45 @@ function processStep(dt) {
     }
 
     case 'machine': {
-      // 보링바 진입 → 내경 가공 → 후퇴
+      // 보링바: Z축 방향으로 소재 안에 진입 → 가공 → 후퇴
       const dur = 1.6;
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
-      const segCenterZ = barGroup.position.z + seg.zStart + seg.len / 2;
-      const restX = curOuterR + 25;
+      // 제품 세그먼트의 우측 끝 (보링바 진입점)
+      const segRightZ = barGroup.position.z + seg.zStart + seg.len;
+      // 제품 세그먼트의 좌측 끝 (보링바 최대 진입점)
+      const segLeftZ = barGroup.position.z + seg.zStart;
+      // 대기 위치: 제품 우측 바깥
+      const restZ = segRightZ + P.finLen * 2.5;
 
       boringBarMesh.visible = true;
-      boringBarMesh.position.z = segCenterZ;
+      boringBarMesh.position.x = 0;
+      boringBarMesh.position.y = 0;
 
-      if (p < 0.3) {
-        // 보링바 진입 (우측에서 소재 중심으로)
-        const pp = p / 0.3;
-        boringBarMesh.position.x = THREE.MathUtils.lerp(restX, 0, easeInOut(pp));
-        const glow = pp * 0.3;
+      if (p < 0.25) {
+        // 보링바 접근 (대기→제품 우측 끝)
+        const pp = p / 0.25;
+        boringBarMesh.position.z = THREE.MathUtils.lerp(restZ, segRightZ, easeInOut(pp));
+        const glow = pp * 0.15;
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.5, 0);
-      } else if (p < 0.7) {
-        // 내경 가공 중 (중심에서 미세 진동 + 발광)
-        boringBarMesh.position.x = Math.sin(p * 40) * 0.3;
-        const glow = 0.3 + Math.sin(p * Math.PI * 4) * 0.1;
+      } else if (p < 0.65) {
+        // 소재 내부 진입 (우→좌, 내경 가공)
+        const pp = (p - 0.25) / 0.4;
+        boringBarMesh.position.z = THREE.MathUtils.lerp(segRightZ, segLeftZ, easeInOut(pp));
+        const glow = 0.15 + Math.sin(pp * Math.PI * 6) * 0.15;
+        seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
+      } else if (p < 0.85) {
+        // 보링바 후퇴 (좌→대기)
+        const pp = (p - 0.65) / 0.2;
+        boringBarMesh.position.z = THREE.MathUtils.lerp(segLeftZ, restZ, easeInOut(pp));
+        const glow = 0.15 * (1 - pp);
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
       } else {
-        // 보링바 후퇴
-        const pp = (p - 0.7) / 0.3;
-        boringBarMesh.position.x = THREE.MathUtils.lerp(0, restX, easeInOut(pp));
-        const glow = 0.3 * (1 - pp);
-        seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
+        boringBarMesh.position.z = restZ;
       }
 
       if (p >= 1) {
         boringBarMesh.visible = false;
-        boringBarMesh.position.x = restX;
         seg.mesh.material.emissive = new THREE.Color(0x000000);
         nextStep();
       }
