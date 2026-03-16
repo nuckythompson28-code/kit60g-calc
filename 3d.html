@@ -432,6 +432,9 @@ function togglePlay() {
 }
 window.togglePlay = togglePlay;
 
+// 떨어진 제품 메쉬 추적
+let fallenPieces = [];
+
 function resetAnim() {
   playing = false;
   animIdx = 0;
@@ -446,8 +449,18 @@ function resetAnim() {
       seg.mesh.visible = true;
       seg.mesh.material.emissive = new THREE.Color(0x000000);
     }
+    seg._fallen = false;
+    seg._origY = 0;
   });
+  // 떨어진 제품 제거
+  fallenPieces.forEach(m => scene.remove(m));
+  fallenPieces = [];
   if (toolMesh) toolMesh.visible = false;
+  // barGroup 위치 초기화
+  if (barGroup && result) {
+    const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
+    barGroup.position.z = -totalLen / 2;
+  }
   setStatus('리셋 완료 – 재생 버튼을 눌러주세요');
 }
 window.resetAnim = resetAnim;
@@ -487,40 +500,53 @@ function processStep(dt) {
       break;
 
     case 'facePart': {
-      // 페이스컷 + 파팅 동시 절단: 파팅이 잘리면서 페이스컷 부분도 탈락
-      const dur = 2.0;
+      // 페이스컷 + 파팅 동시 절단: 파팅이 잘리면서 페이스컷+파팅 부분 탈락
+      const dur = 2.5;
       const p = Math.min(stepState.t / dur, 1);
       const faceSeg = step.seg;
       const partSeg = step.partSeg;
       toolMesh.visible = true;
+
       // 파팅 위치에서 툴 진입
       if (partSeg) {
         const wz = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
         toolMesh.position.z = wz;
       }
       const startY = BAR_R + 22;
-      if (p < 0.5) {
-        // 툴 진입
-        toolMesh.position.y = THREE.MathUtils.lerp(startY, 0, easeInOut(p / 0.5));
-        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.4 * (p/0.5), 0.15 * (p/0.5), 0);
-        if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(0.3 * (p/0.5), 0.1 * (p/0.5), 0);
-      } else if (p < 0.7) {
+
+      if (p < 0.4) {
+        // 툴 진입 (페이스컷 + 파팅 동시)
+        const pp = p / 0.4;
+        toolMesh.position.y = THREE.MathUtils.lerp(startY, 0, easeInOut(pp));
+        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.5 * pp, 0.2 * pp, 0);
+        if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(0.4 * pp, 0.15 * pp, 0);
+      } else if (p < 0.55) {
         // 절단 유지
         toolMesh.position.y = 0;
-      } else {
-        // 툴 후퇴 + 페이스컷 부분 투명화 (탈락)
-        const pp = (p - 0.7) / 0.3;
+        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.5, 0.2, 0);
+      } else if (p < 0.75) {
+        // 툴 후퇴
+        const pp = (p - 0.55) / 0.2;
         toolMesh.position.y = THREE.MathUtils.lerp(0, startY, easeInOut(pp));
-        if (faceSeg) {
+        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.5 * (1-pp), 0.2 * (1-pp), 0);
+      } else {
+        // 페이스컷 + 파팅 조각이 아래로 떨어짐
+        const pp = (p - 0.75) / 0.25;
+        toolMesh.visible = false;
+        if (faceSeg && faceSeg.mesh) {
+          faceSeg.mesh.position.y = -pp * 30;
           faceSeg.mesh.material.transparent = true;
-          faceSeg.mesh.material.opacity = 1 - pp * 0.7;
+          faceSeg.mesh.material.opacity = 1 - pp;
         }
-        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0, 0, 0);
+        if (partSeg && partSeg.mesh) {
+          partSeg.mesh.material.transparent = true;
+          partSeg.mesh.material.opacity = 1 - pp * 0.5;
+        }
       }
       if (p >= 1) {
         toolMesh.visible = false;
         toolMesh.position.y = startY;
-        if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(0x222222);
+        if (faceSeg && faceSeg.mesh) { faceSeg.mesh.visible = false; faceSeg._fallen = true; }
         if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0, 0, 0);
         nextStep();
       }
@@ -542,52 +568,82 @@ function processStep(dt) {
     }
 
     case 'partCut': {
-      const dur = 1.8;
+      // 파팅: 툴 진입 → 절단 → 후퇴 → 제품이 아래로 떨어짐
+      const dur = 2.2;
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
+      const prodSeg = step.prodSeg;
       const wz = barGroup.position.z + seg.zStart + seg.len / 2;
       toolMesh.visible = true;
       toolMesh.position.z = wz;
+      const startY = BAR_R + 22;
 
-      if (p < 0.6) {
-        // Tool moves in
-        const pp = p / 0.6;
-        const startY = BAR_R + 22;
+      if (p < 0.35) {
+        // 툴 진입
+        const pp = p / 0.35;
         toolMesh.position.y = THREE.MathUtils.lerp(startY, 0, easeInOut(pp));
-        // Parting segment glows
-        seg.mesh.material.emissive = new THREE.Color(0.4 * pp, 0.15 * pp, 0);
-      } else if (p < 0.8) {
-        // Hold at center briefly
+        seg.mesh.material.emissive = new THREE.Color(0.5 * pp, 0.2 * pp, 0);
+      } else if (p < 0.5) {
+        // 절단 유지
         toolMesh.position.y = 0;
-        seg.mesh.material.emissive = new THREE.Color(0.4, 0.15, 0);
+        seg.mesh.material.emissive = new THREE.Color(0.5, 0.2, 0);
+      } else if (p < 0.65) {
+        // 툴 후퇴
+        const pp = (p - 0.5) / 0.15;
+        toolMesh.position.y = THREE.MathUtils.lerp(0, startY, easeInOut(pp));
+        seg.mesh.material.emissive = new THREE.Color(0.5 * (1-pp), 0.2 * (1-pp), 0);
       } else {
-        // Tool retracts
-        const pp = (p - 0.8) / 0.2;
-        toolMesh.position.y = THREE.MathUtils.lerp(0, BAR_R + 22, easeInOut(pp));
-        seg.mesh.material.emissive = new THREE.Color(0, 0, 0);
-        // Fade the product piece slightly to indicate separation
-        if (step.prodSeg && step.prodSeg.mesh) {
-          step.prodSeg.mesh.material.transparent = true;
-          step.prodSeg.mesh.material.opacity = 0.85;
+        // 제품이 아래로 떨어짐
+        toolMesh.visible = false;
+        const pp = (p - 0.65) / 0.35;
+        if (prodSeg && prodSeg.mesh && !prodSeg._fallen) {
+          prodSeg.mesh.position.y = -easeInOut(pp) * 40;
+          prodSeg.mesh.position.z += pp * 0.1; // 약간 앞으로
+          prodSeg.mesh.material.transparent = true;
+          prodSeg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
         }
       }
 
       if (p >= 1) {
         toolMesh.visible = false;
-        toolMesh.position.y = BAR_R + 22;
+        toolMesh.position.y = startY;
         seg.mesh.material.emissive = new THREE.Color(0, 0, 0);
+        // 제품 숨기기
+        if (prodSeg && prodSeg.mesh) {
+          prodSeg.mesh.visible = false;
+          prodSeg._fallen = true;
+        }
         nextStep();
       }
       break;
     }
 
     case 'alPull': {
-      const dur = 2.0;
+      // 오토링크 인출: 봉재가 face쪽(+Z)으로 밀려나옴
+      const dur = 2.5;
       const p = Math.min(stepState.t / dur, 1);
-      // Visual: brief flash
-      if (p < 0.3) {
-        // flash overlay color
+      const pullDist = result.machLen + P.tipWidth + P.margin;
+
+      if (p < 0.2) {
+        // 정지 대기 (척 풀림 표시)
+      } else if (p < 0.8) {
+        // 봉재 이동 (+Z 방향으로 pullDist만큼)
+        const pp = (p - 0.2) / 0.6;
+        if (barGroup) {
+          const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
+          const baseZ = -totalLen / 2;
+          const alCount = step.cycle === -2 ? result.autoPulls : step.cycle;
+          const prevPull = (alCount - 1) * pullDist;
+          barGroup.position.z = baseZ + prevPull + easeInOut(pp) * pullDist;
+        }
+        // 척도 함께 이동
+        if (chuckGroup && barGroup) {
+          chuckGroup.position.z = barGroup.position.z - 1;
+        }
+      } else {
+        // 척 재고정
       }
+
       if (p >= 1) {
         nextStep();
       }
