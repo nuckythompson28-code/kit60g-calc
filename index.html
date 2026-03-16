@@ -284,20 +284,20 @@ function buildSegs(p, matLen, r) {
     : r.scrap + p.tipWidth + p.margin;
 
   // 1. 스크랩
-  S(x, scrapViz, '#d63031', `스크랩 ${scrapViz.toFixed(1)}mm`);
+  S(x, scrapViz, '#d63031', `스크랩 ${scrapViz.toFixed(1)}`);
   x += scrapViz;
 
   // 2. #531 조물림 DZ
-  S(x, p.chuckLeft, '#7c1a1a', `#531 ${p.chuckLeft}mm`);
+  S(x, p.chuckLeft, '#7c1a1a', `조물림 ${p.chuckLeft}`);
   x += p.chuckLeft;
 
   // 3. #530+#532 조바깥 DZ
-  S(x, p.safetyLen + p.chuck2jaw, '#3d0c0c', `#530+532 ${(p.safetyLen + p.chuck2jaw).toFixed(2)}mm`);
+  S(x, p.safetyLen + p.chuck2jaw, '#3d0c0c', `조바깥 ${(p.safetyLen + p.chuck2jaw).toFixed(1)}`);
   x += p.safetyLen + p.chuck2jaw;
 
   // 4. RS40 잔재안전값
   if (p.residual > 0) {
-    S(x, p.residual, '#2d1b69', `잔재안전 ${p.residual}mm`);
+    S(x, p.residual, '#2d1b69', `잔재안전 ${p.residual}`);
     x += p.residual;
   }
 
@@ -305,15 +305,15 @@ function buildSegs(p, matLen, r) {
   const pcsMain = r.pcsChuck * (1 + r.autoPulls);
   for (let j = 0; j < r.remainPcs; j++) {
     const pn = pcsMain + j + 1;
-    S(x,              p.tipWidth, '#e17055', `잔재#${pn} 파팅`);
-    S(x + p.tipWidth, p.finLen,   '#0984e3', `잔재#${pn} 제품`);
+    S(x,              p.tipWidth, '#e17055', `잔재${pn} 파팅`);
+    S(x + p.tipWidth, p.finLen,   '#0984e3', `잔재${pn}`);
     x += r.unitW;
   }
 
   // 6. 잔재/메인 구분자 (잔재 있을 때만) — 마진#123 노랑만
   //    #114(회색)는 아래 메인사이클 첫 구분자가 담당
   if (r.remainPcs > 0) {
-    S(x, p.margin, '#fdcb6e', 'AL마진 #123');
+    S(x, p.margin, '#fdcb6e', 'AL마진');
     x += p.margin;
   }
 
@@ -321,8 +321,8 @@ function buildSegs(p, matLen, r) {
   //    패턴: [구분#114][피스들] × cycles, 사이클 사이: [마진#123]
   for (let cyc = 0; cyc <= r.autoPulls; cyc++) {
     // 구분자 (각 사이클 왼쪽)
-    const cycLabel = cyc === r.autoPulls ? '초기척킹 구분' : `AL${r.autoPulls - cyc} 구분`;
-    S(x, p.tipWidth, '#636e72', cycLabel + ' #114');
+    const cycLabel = cyc === r.autoPulls ? '초기척킹' : `AL${r.autoPulls - cyc}`;
+    S(x, p.tipWidth, '#636e72', cycLabel);
     x += p.tipWidth;
 
     // 피스들 (왼=깊은곳, 오=face쪽)
@@ -330,20 +330,20 @@ function buildSegs(p, matLen, r) {
       // 사이클 번호: cyc=0이 맨왼쪽(마지막AL), cyc=autoPulls가 초기
       const cycNum = r.autoPulls - cyc;   // 0=초기, autoPulls=마지막AL
       const pn = cycNum * r.pcsChuck + j + 1;
-      S(x,              p.tipWidth, '#e17055', `#${pn} 파팅`);
-      S(x + p.tipWidth, p.finLen,   '#00b894', `#${pn} 제품`);
+      S(x,              p.tipWidth, '#e17055', `${pn}`);
+      S(x + p.tipWidth, p.finLen,   '#00b894', `${pn}`);
       x += r.unitW;
     }
 
     // 사이클 사이 마진 (마지막 사이클=초기척킹 이후에는 없음)
     if (cyc < r.autoPulls) {
-      S(x, p.margin, '#fdcb6e', 'AL마진 #123');
+      S(x, p.margin, '#fdcb6e', 'AL마진');
       x += p.margin;
     }
   }
 
   // 8. 페이스컷
-  S(x, p.faceCut, '#6c5ce7', `페이스컷 #104`);
+  S(x, p.faceCut, '#6c5ce7', `페이스컷`);
   x += p.faceCut;
 
   return segs;
@@ -562,11 +562,11 @@ function animDraw() {
   lx += scW;
   const j531w = Math.max(p.chuckLeft * sc, 1);
   svg += `<rect x="${lx.toFixed(1)}" y="0" width="${j531w.toFixed(1)}" height="${BH}" fill="#7c1a1a" stroke="#e94560" stroke-width="1"/>`;
-  if (j531w > 14) svg += `<text x="${(lx+j531w/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">#531</text><text x="${(lx+j531w/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${Math.round(p.chuckLeft)}</text>`;
+  if (j531w > 14) svg += `<text x="${(lx+j531w/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">조물림</text><text x="${(lx+j531w/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${Math.round(p.chuckLeft)}</text>`;
   lx += j531w;
   const jOw = Math.max((p.safetyLen + p.chuck2jaw) * sc, 1);
   svg += `<rect x="${lx.toFixed(1)}" y="0" width="${jOw.toFixed(1)}" height="${BH}" fill="#3d0c0c" stroke="#e94560" stroke-width="1"/>`;
-  if (jOw > 18) svg += `<text x="${(lx+jOw/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">#530+532</text><text x="${(lx+jOw/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${(p.safetyLen+p.chuck2jaw).toFixed(1)}</text>`;
+  if (jOw > 18) svg += `<text x="${(lx+jOw/2).toFixed(1)}" y="${BH/2}" text-anchor="middle" fill="#e94560" font-size="7" font-weight="bold">조바깥</text><text x="${(lx+jOw/2).toFixed(1)}" y="${BH/2+8}" text-anchor="middle" fill="#e94560" font-size="7">${(p.safetyLen+p.chuck2jaw).toFixed(1)}</text>`;
 
   const dzX = (1 + (scrapVz + r.deadZone + p.residual) * sc).toFixed(1);
   svg += `<line x1="${dzX}" y1="0" x2="${dzX}" y2="${BH}" stroke="#e94560" stroke-width="1.5" stroke-dasharray="3,2"/>`;
