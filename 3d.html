@@ -422,8 +422,10 @@ function buildScene(matLen) {
   bbTip.rotation.x = Math.PI / 2;
   bbTip.position.z = bbBarLen + 1.5;
   bbGroup.add(bbTip);
-  // 외경 상단에 배치
-  bbGroup.position.set(0, outerR - 2, stickoutLen + bbBarLen + 10);
+  // 팁 오프셋 저장 (애니메이션에서 팁 위치 기준 보정용)
+  const bbTipOffset = bbBarLen + 1.5;
+  bbGroup.userData = { tipOffset: bbTipOffset };
+  bbGroup.position.set(0, outerR - 2, stickoutLen + 15);
   bbGroup.visible = false;
   boringBarMesh = bbGroup;
   scene.add(boringBarMesh);
@@ -453,8 +455,10 @@ function buildScene(matLen) {
   const alFingerBot = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), fingerMat);
   alFingerBot.position.set(0, -(outerR + 2), -(outerR * 1.5 + 1));
   alGroup.add(alFingerBot);
-  alGroup.userData = { fingerTop: alFingerTop, fingerBot: alFingerBot };
-  alGroup.position.set(0, 0, stickoutLen + 15);
+  // 핑거가 -Z 방향에 있으므로 오프셋 저장
+  const fingerOffset = outerR * 1.5 + 1;
+  alGroup.userData = { fingerTop: alFingerTop, fingerBot: alFingerBot, fingerOffset };
+  alGroup.position.set(0, 0, stickoutLen + fingerOffset + 5);
   alGroup.visible = false;
   alGripperMesh = alGroup;
   scene.add(alGripperMesh);
@@ -723,35 +727,34 @@ function processStep(dt) {
     }
 
     case 'machine': {
-      // 보링바: Z축 방향으로 제품 길이만큼만 진입 → 가공 → 후퇴
+      // 보링바: 팁 기준으로 제품 길이만큼만 진입
       const dur = 1.6;
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
-      // 제품 세그먼트의 우측 끝 (보링바 진입점)
+      const tipOff = boringBarMesh.userData.tipOffset || 0;
+      // 팁이 제품 우측 끝에 닿는 그룹 Z
       const segRightZ = barGroup.position.z + seg.zStart + seg.len;
-      // 보링바 팁이 제품 길이(finLen)만큼만 진입
-      const segTargetZ = segRightZ - P.finLen;
-      // 대기 위치: 제품 우측 바깥 (가까이)
-      const restZ = segRightZ + 15;
+      const tipAtRight = segRightZ - tipOff;
+      // 팁이 제품 길이만큼 진입한 그룹 Z
+      const tipAtDeep = segRightZ - P.finLen - tipOff;
+      // 대기: 팁이 제품 우측 끝 + 10mm 바깥
+      const restZ = tipAtRight + 10;
 
       boringBarMesh.visible = true;
 
       if (p < 0.25) {
-        // 보링바 접근 (대기→제품 우측 끝)
         const pp = p / 0.25;
-        boringBarMesh.position.z = THREE.MathUtils.lerp(restZ, segRightZ, easeInOut(pp));
+        boringBarMesh.position.z = THREE.MathUtils.lerp(restZ, tipAtRight, easeInOut(pp));
         const glow = pp * 0.15;
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.5, 0);
       } else if (p < 0.65) {
-        // 소재 내부 진입 (제품 길이만큼만)
         const pp = (p - 0.25) / 0.4;
-        boringBarMesh.position.z = THREE.MathUtils.lerp(segRightZ, segTargetZ, easeInOut(pp));
+        boringBarMesh.position.z = THREE.MathUtils.lerp(tipAtRight, tipAtDeep, easeInOut(pp));
         const glow = 0.15 + Math.sin(pp * Math.PI * 6) * 0.15;
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
       } else if (p < 0.85) {
-        // 보링바 후퇴 (→대기)
         const pp = (p - 0.65) / 0.2;
-        boringBarMesh.position.z = THREE.MathUtils.lerp(segTargetZ, restZ, easeInOut(pp));
+        boringBarMesh.position.z = THREE.MathUtils.lerp(tipAtDeep, restZ, easeInOut(pp));
         const glow = 0.15 * (1 - pp);
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
       } else {
@@ -843,14 +846,12 @@ function processStep(dt) {
 
       if (stepState.phase === 0) {
         stepState.startBarZ = barGroup ? barGroup.position.z : 0;
-        // 바 우측 끝 위치 (그리퍼 접근 목표)
         const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
         const barRightZ = stepState.startBarZ + totalLen;
-        stepState.barRightZ = barRightZ;
-        // 그리퍼 대기 위치 (바 바로 오른쪽)
-        stepState.gripperRestZ = barRightZ + 12;
-        // 그리퍼 잡기 위치 (바 끝에 핑거가 닿는 위치)
-        stepState.gripperGrabZ = barRightZ - 4;
+        // 핑거가 -Z에 있으므로 그룹 Z = barRightZ + fingerOffset 이면 핑거가 바 끝에 위치
+        const fOff = alGripperMesh.userData.fingerOffset || 0;
+        stepState.gripperGrabZ = barRightZ + fOff;
+        stepState.gripperRestZ = barRightZ + fOff + 10;
         stepState.phase = 1;
       }
 
