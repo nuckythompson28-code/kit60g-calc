@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>KIT60G 3D 가공 시뮬레이션</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'Malgun Gothic', sans-serif;
+  background: #1a1a2e; color: #e0e0e0;
+  overflow: hidden; height: 100vh;
+}
+#ui {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+  padding: 10px 14px; background: linear-gradient(180deg, rgba(26,26,46,0.97) 80%, rgba(26,26,46,0));
+  pointer-events: none;
+}
+#ui > * { pointer-events: auto; }
+h1 {
+  font-size: 17px; color: #00d4ff; text-align: center;
+  margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #333;
+}
+h1 a { color: #888; font-size: 12px; text-decoration: none; margin-left: 10px; }
+h1 a:hover { color: #00d4ff; }
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  justify-content: center; margin-bottom: 6px;
+}
+.toolbar label { font-size: 12px; color: #aaa; }
+.toolbar input {
+  width: 70px; padding: 5px 6px; border: 1px solid #444; border-radius: 5px;
+  background: #0f3460; color: #fff; font-size: 13px; text-align: center;
+}
+.toolbar select {
+  padding: 5px 6px; border: 1px solid #444; border-radius: 5px;
+  background: #0f3460; color: #fff; font-size: 12px;
+}
+.btn {
+  padding: 6px 14px; border: none; border-radius: 6px;
+  font-size: 12px; font-weight: bold; cursor: pointer; color: #fff;
+}
+.btn-red { background: #e94560; }
+.btn-red:active { background: #c73550; }
+.btn-blue { background: #0984e3; }
+.btn-blue:active { background: #0770c2; }
+.btn-green { background: #00b894; }
+.btn-green:active { background: #009975; }
+.btn-gray { background: #636e72; }
+.btn-gray:active { background: #4a5558; }
+#status {
+  text-align: center; font-size: 13px; color: #fdcb6e;
+  min-height: 20px; padding: 4px 0;
+}
+#legend {
+  display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: center;
+  font-size: 11px; color: #aaa; padding: 2px 0;
+}
+#legend span { display: flex; align-items: center; gap: 3px; }
+#legend span b {
+  display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+}
+canvas { display: block; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="ui">
+  <h1>KIT60G 3D 가공 시뮬레이션 <a href="index.html">← 계산기</a></h1>
+  <div class="toolbar">
+    <label>소재길이</label>
+    <input id="inMatLen" type="number" value="543" step="1" data-sync="matLen">
+    <label>mm</label>
+    <label>외경</label>
+    <input id="inOD" type="number" value="95" step="0.1" style="width:50px">
+    <label>내경</label>
+    <input id="inID" type="number" value="88" step="0.1" style="width:50px">
+    <label>mm</label>
+    <button class="btn btn-red" onclick="rebuild()">재생성</button>
+    <span style="width:8px"></span>
+    <button class="btn btn-green" id="btnPlay" onclick="togglePlay()">▶ 재생</button>
+    <button class="btn btn-gray" onclick="resetAnim()">↺ 리셋</button>
+    <label>속도</label>
+    <select id="selSpeed" onchange="updateSpeed()">
+      <option value="1.2">느림</option>
+      <option value="4" selected>보통</option>
+      <option value="12">빠름</option>
+      <option value="32">초고속</option>
+    </select>
+  </div>
+  <div id="paramInfo" style="font-size:11px;color:#666;text-align:center;padding:2px 0"></div>
+  <div id="status">재생 버튼을 눌러주세요</div>
+  <div id="legend"></div>
+</div>
+
+<canvas id="c"></canvas>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ── Parameters (localStorage에서 로드, 없으면 기본값) ── */
+const _saved = (() => {
+  try { return JSON.parse(localStorage.getItem('kit60g_params')) || {}; } catch { return {}; }
+})();
+const P = {
+  finLen:    _saved.finLen    ?? 15.33,
+  tipWidth:  _saved.tipWidth  ?? 2.0,
+  chuckInit: _saved.chuckInit ?? 75,
+  safetyLen: _saved.safetyLen ?? 12,
+  chuckLeft: _saved.chuckLeft ?? 15,
+  chuck2jaw: _saved.chuck2jaw ?? 1.03,
+  faceCut:   _saved.faceCut   ?? 1,
+  margin:    _saved.margin    ?? 0.2,
+  matType:   _saved.matType   ?? 3,
+  matLen:    _saved.matLen    ?? 543,
+  residual:  _saved.residual  ?? 0
+};
+const BAR_R = 47.5;
+let curOuterR = BAR_R; // 현재 외경 반지름 (buildScene에서 갱신)
+
+/* ── Calculation ── */
+function calc(p, matLen) {
+  const unitW    = p.finLen + p.tipWidth;
+  const deadZone = p.chuckLeft + p.chuck2jaw + p.safetyLen;
+  const pcsChuck = Math.floor((p.chuckInit - p.safetyLen) / unitW);
+  if (pcsChuck < 1) return null;
+  const machLen  = pcsChuck * unitW;
+  const effMat   = matLen - ((p.matType === 2) ? 15 : 0);
+  if (effMat <= machLen + p.safetyLen) return null;
+  let autoPulls = Math.floor(
+    (effMat - deadZone - machLen - p.tipWidth - p.faceCut)
+    / (machLen + p.tipWidth + p.margin)
+  );
+  if (autoPulls < 0) autoPulls = 0;
+  const consumed  = (machLen + p.tipWidth + p.faceCut)
+                  + autoPulls * (machLen + p.tipWidth + p.margin);
+  const remainRaw = effMat - consumed - deadZone - (p.tipWidth + p.margin);
+  const remainPcs = Math.max(0, Math.floor(remainRaw / unitW));
+  const scrap     = remainPcs > 0
+                  ? Math.max(0, remainRaw - remainPcs * unitW)
+                  : Math.max(0, remainRaw);
+  const total     = pcsChuck * (1 + autoPulls) + remainPcs;
+  return { total, autoPulls, remainPcs, scrap, pcsChuck, machLen, unitW, deadZone };
+}
+
+/* ── Colors (소재타입별 제품색) ── */
+const MAT_COLORS = { 1: 0xf1c40f, 2: 0x74b9ff, 3: 0xdfe6e9 }; // 노랑, 스카이블루, 연회색
+const productColor = MAT_COLORS[P.matType] || 0xdfe6e9;
+const COL = {
+  scrap:    0xd63031,
+  jawGrip:  0x7c1a1a,
+  safety:   0x3d0c0c,
+  product:  productColor,
+  residual: productColor,
+  parting:  0xe17055,
+  margin:   0xfdcb6e,
+  sep:      0x636e72,
+  faceCut:  0x6c5ce7,
+  chuck:    0x8899aa,
+  tool:     0xcccccc,
+};
+
+/* ── Three.js Setup ── */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.LinearToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.setClearColor(0x1a1a2e);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x1a1a2e, 600, 1200);
+const camera = new THREE.PerspectiveCamera(45, 1, 1, 2000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 30;
+controls.maxDistance = 900;
+
+/* Lighting */
+const ambLight = new THREE.AmbientLight(0x404060, 0.8);
+scene.add(ambLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.6);
+dirLight.position.set(100, 200, 150);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(1024, 1024);
+scene.add(dirLight);
+const fillLight = new THREE.DirectionalLight(0x4488ff, 0.4);
+fillLight.position.set(-80, 60, -100);
+scene.add(fillLight);
+
+/* Grid floor */
+const gridHelper = new THREE.GridHelper(800, 40, 0x222244, 0x181830);
+gridHelper.position.y = 0;
+scene.add(gridHelper);
+
+/* ── State ── */
+let barGroup, chuckGroup, gangGroup;
+let toolMesh, boringBarMesh, alGripperMesh; // gangGroup 내부 서브 참조
+let segments = [];      // { mesh, type, zStart, len, cycle }
+let animSteps = [];
+let animIdx = 0, animT = 0, playing = false;
+let initialBarZ = 0;   // 초기 barGroup.position.z (리셋용)
+let initialChuckZ = 0; // 초기 chuckGroup.position.z (리셋용)
+let gangRestZ = 0;      // 갱 툴포스트 초기 Z
+let speedMul = 1;
+let barSpinning = false;
+let result = null;
+
+/* ── Build Bar Segments ── */
+function buildSegments(matLen) {
+  result = calc(P, matLen);
+  if (!result) { setStatus('계산 불가 – 소재 길이를 확인하세요'); return false; }
+  segments = [];
+  const r = result;
+  let z = 0;
+  const push = (len, type, cycle) => {
+    if (len <= 0) return;
+    segments.push({ zStart: z, len, type, cycle: cycle ?? -1 });
+    z += len;
+  };
+
+  // From left: scrap → jawGrip → safety+chuck2jaw → [machining zone] → faceCut
+  push(Math.max(0, r.scrap), 'scrap', -1);
+  push(P.chuckLeft, 'jawGrip', -1);
+  push(P.chuck2jaw + P.safetyLen, 'safety', -1);
+
+  // Remaining pieces (residual) — 파팅(왼) → 제품(오) → 파팅 → 마진
+  for (let i = 0; i < r.remainPcs; i++) {
+    push(P.tipWidth, 'parting', -2);
+    push(P.finLen, 'residual', -2);
+  }
+  if (r.remainPcs > 0) {
+    push(P.tipWidth, 'parting', -2); // 마진 왼쪽 파팅
+    push(P.margin, 'margin', -2);
+  }
+
+  // AL cycles (from last to first, since left = farther from face)
+  for (let a = r.autoPulls; a >= 1; a--) {
+    for (let i = 0; i < r.pcsChuck; i++) {
+      push(P.tipWidth, 'parting', a);
+      push(P.finLen, 'product', a);
+    }
+    push(P.tipWidth, 'parting', a); // 마진 왼쪽 파팅
+    push(P.margin, 'margin', a);
+  }
+
+  // Initial chuck cycle — 파팅(왼) → 제품(오)
+  for (let i = 0; i < r.pcsChuck; i++) {
+    push(P.tipWidth, 'parting', 0);
+    push(P.finLen, 'product', 0);
+  }
+
+  // 페이스컷 왼쪽 파팅 (페이스컷+파팅 동시 절단용)
+  push(P.tipWidth, 'parting', 0);
+
+  // Face cut
+  push(P.faceCut, 'faceCut', 0);
+
+  return true;
+}
+
+function buildScene(matLen) {
+  // Clear old
+  if (barGroup) scene.remove(barGroup);
+  if (chuckGroup) scene.remove(chuckGroup);
+  if (gangGroup) scene.remove(gangGroup);
+
+  if (!buildSegments(matLen)) return;
+
+  const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
+
+  /* Bar group — 외경/내경 반영 */
+  barGroup = new THREE.Group();
+  const outerR = parseFloat(document.getElementById('inOD').value) / 2 || BAR_R;
+  const innerR = parseFloat(document.getElementById('inID').value) / 2 || 0;
+  curOuterR = outerR;
+
+  // 튜브 지오메트리 생성 (내경 > 0이면 중공)
+  function makeTubeGeo(len, oR, iR) {
+    if (iR > 0 && iR < oR) {
+      // LatheGeometry로 단면 회전체 생성 (반원형 단면 → 튜브)
+      const shape = new THREE.Shape();
+      const halfL = len / 2;
+      shape.moveTo(iR, -halfL);
+      shape.lineTo(oR, -halfL);
+      shape.lineTo(oR, halfL);
+      shape.lineTo(iR, halfL);
+      shape.lineTo(iR, -halfL);
+      const geo = new THREE.LatheGeometry(
+        shape.getPoints(1).map(p => new THREE.Vector2(p.x, p.y)), 32
+      );
+      return geo;
+    }
+    return new THREE.CylinderGeometry(oR, oR, len, 32);
+  }
+
+  segments.forEach((seg, i) => {
+    const col = COL[seg.type] || 0xffffff;
+    const mat = new THREE.MeshStandardMaterial({
+      color: col, metalness: 0.05, roughness: 0.85,
+    });
+    const geo = makeTubeGeo(seg.len, outerR, innerR);
+    const mesh = new THREE.Mesh(geo, mat);
+    // Bar along Z: cylinder/lathe default is along Y, so rotate
+    mesh.rotation.x = Math.PI / 2;
+    mesh.position.z = seg.zStart + seg.len / 2;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    seg.mesh = mesh;
+    barGroup.add(mesh);
+  });
+
+  // 사이클0 영역 길이 (척에서 돌출되는 부분)
+  const cycle0Segs = segments.filter(s => s.cycle === 0);
+  const stickoutLen = cycle0Segs.reduce((sum, s) => sum + s.len, 0);
+
+  // 봉재 위치: 사이클0 영역만 척(z=0) 우측으로 돌출
+  // bar-local totalLen → world stickoutLen (우측 끝)
+  // bar-local (totalLen - stickoutLen) → world 0 (척 면)
+  initialBarZ = -(totalLen - stickoutLen);
+  barGroup.position.z = initialBarZ;
+  scene.add(barGroup);
+
+  /* Chuck — 고정 위치 z=0 */
+  chuckGroup = new THREE.Group();
+  const jawMat = new THREE.MeshStandardMaterial({ color: COL.chuck, metalness: 0.15, roughness: 0.75 });
+
+  // Back plate (척 뒤판)
+  const plateGeo = new THREE.CylinderGeometry(outerR * 2.5, outerR * 2.5, 8, 32);
+  const plate = new THREE.Mesh(plateGeo, jawMat);
+  plate.rotation.x = Math.PI / 2;
+  plate.position.z = -6;
+  plate.castShadow = true;
+  chuckGroup.add(plate);
+
+  // 3 Jaws (조)
+  for (let i = 0; i < 3; i++) {
+    const ang = (i * 2 * Math.PI) / 3;
+    const jawGeo = new THREE.BoxGeometry(outerR * 0.7, outerR * 1.2, 20);
+    const jaw = new THREE.Mesh(jawGeo, jawMat);
+    jaw.position.set(Math.cos(ang) * (outerR + 3.5), Math.sin(ang) * (outerR + 3.5), 3);
+    jaw.rotation.z = ang;
+    jaw.castShadow = true;
+    chuckGroup.add(jaw);
+  }
+
+  // Outer ring (척 외륜)
+  const ringGeo = new THREE.TorusGeometry(outerR * 2.8, 2.5, 16, 32);
+  const ring = new THREE.Mesh(ringGeo, jawMat);
+  ring.position.z = -2;
+  ring.castShadow = true;
+  chuckGroup.add(ring);
+
+  // 척 위치: 사이클0 첫 파팅 왼쪽 끝에서 #530+#532 만큼 왼쪽
+  // 조의 우측 끝(jaw tip)이 그 위치에 오도록 배치
+  const firstCycle0Part = segments.find(s => s.cycle === 0 && s.type === 'parting');
+  const firstPartWorldZ = initialBarZ + (firstCycle0Part ? firstCycle0Part.zStart : 0);
+  const jawTipLocalZ = 13; // jaw center z=3, half-length=10 → tip at z=13
+  initialChuckZ = firstPartWorldZ - (P.safetyLen + P.chuck2jaw) - jawTipLocalZ;
+  chuckGroup.position.z = initialChuckZ;
+  scene.add(chuckGroup);
+
+  /* ── 갱 툴포스트: T01+T02+T03 한 뭉탱이 ── */
+  /* 갱타입 CNC: 모든 공구가 하나의 슬라이드에 장착, Y(반경)+Z(축) 동시 이동 */
+  gangGroup = new THREE.Group();
+  const TOOL_SP = outerR + 8; // 공구간 Y 간격
+  const gangMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.2, roughness: 0.8 });
+
+  /* 공구보정(Tool Compensation) 기반 오프셋
+     G10 P0 원점(0.0)까지 도달하는 데 필요한 이동량:
+     T001 X-476.210 / Z-505.311 → Z 가장 뒤, X 가장 가까움(낮음)
+     T002 X-544.960 / Z-452.500 → Z 가장 앞, X 중간
+     T003 X-822.500 / Z-469.200 → Z 중간,   X 가장 멀리(높음)
+     X: 절대값 클수록 원점에서 위로 멀리 → 내려와야 하는 거리 큼
+     Z: 절대값 클수록 원점에서 뒤로 멀리 → 앞으로 와야 하는 거리 큼 */
+  const COMP_X = { t01: -476.210, t02: -544.960, t03: -822.500 };
+  const COMP_Z = { t01: -505.311, t02: -452.500, t03: -469.200 };
+  // T01 기준 상대 오프셋
+  // Z: 양수 = T01보다 앞으로 돌출 (원점에 가까움)
+  const T02_ZOFF = COMP_Z.t02 - COMP_Z.t01; // +52.811mm 앞
+  const T03_ZOFF = COMP_Z.t03 - COMP_Z.t01; // +36.111mm 앞
+  // 갱 내부 공구 배치 (시각용 — 실제 물리 간격은 작음)
+  // Z: 보정값 차이를 스케일링하여 상대 위치 표현
+  const Z_SCALE = 0.3;
+  const t02ZOff = -T02_ZOFF * Z_SCALE; // T02가 T01보다 앞쪽(-Z)
+  const t03ZOff = -T03_ZOFF * Z_SCALE;
+  // Y: 갱 내부에서 공구 간 물리적 간격 (시각용, 작게)
+  const GANG_SP = 10; // 공구간 갱 내부 간격
+  const t02YOff = GANG_SP;       // T02는 T01보다 위
+  const t03YOff = GANG_SP * 2;   // T03은 더 위
+
+  /* 실제 KIT60G 갱툴 재현 — 사진 기반 */
+  /* 베이스 블록이 메인 몸체, T01홀더가 블록에 통합, T02는 전면 소형 인서트 */
+  const toolMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, metalness: 0.15, roughness: 0.75 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.12, roughness: 0.85 });
+
+  // ── 베이스 블록 제거됨 — 툴은 점으로만 표현 ──
+
+  /* ── T01 (보링바) — 점으로 표현 ── */
+  const t01Sub = new THREE.Group();
+  const bbDot = new THREE.Mesh(
+    new THREE.SphereGeometry(3, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 })
+  );
+  t01Sub.add(bbDot);
+  const bbTipOffset = 0;
+  t01Sub.position.set(0, 0, 0);
+  gangGroup.add(t01Sub);
+  boringBarMesh = t01Sub;
+
+  /* ── T02 (절단바이트) — 점으로 표현 ── */
+  const t02Sub = new THREE.Group();
+  const tBlade = new THREE.Mesh(
+    new THREE.SphereGeometry(3, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.5 })
+  );
+  t02Sub.add(tBlade);
+  t02Sub.position.set(0, t02YOff, t02ZOff);
+  gangGroup.add(t02Sub);
+  toolMesh = tBlade;
+
+  /* ── T03 (AL 그리퍼) — 점으로 표현 ── */
+  const t03Sub = new THREE.Group();
+  const armLen = 8;
+  const alDot = new THREE.Mesh(
+    new THREE.SphereGeometry(3, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0x0088ff, emissive: 0x0088ff, emissiveIntensity: 0.5 })
+  );
+  t03Sub.add(alDot);
+  t03Sub.position.set(0, t03YOff, t03ZOff);
+  gangGroup.add(t03Sub);
+  alGripperMesh = t03Sub;
+
+  // 갱 메타데이터 (실제 배치: T01=0, T02=SP, T03=SP*2)
+  const t02OpenY = outerR + 1.5;
+  // T02(절단바이트): 내경까지만 내려감 (중심선 아래로 안 감)
+  const t02CutY = innerR > 0 ? innerR : 0;
+  // T03(AL 그리퍼): 중심선(0)까지만 내려감
+  const t03GripY = 0;
+  const t03FingerOff = armLen - 2; // 핑거팁 localZ = -armLen+2, 그래서 오프셋 = armLen-2
+  // 각 공구 팁의 gang-local 좌표 (점이므로 팁 = 점 중심)
+  const t01TipGangZ = 0;
+  const t02TipGangZ = t02ZOff;
+  const t03TipGangZ = t03ZOff;
+  gangGroup.userData = {
+    toolSpacing: TOOL_SP,
+    t01LocalY: 0,           // T01 기준
+    t02LocalY: t02YOff,    // T02 보정값 차이
+    t03LocalY: t03YOff,    // T03 보정값 차이
+    t02OpenY, t02CutY,
+    t01TipOffset: bbTipOffset,
+    t01TipGangZ,            // T01 팁 gang-local Z
+    t02TipGangZ,            // T02 칼날 gang-local Z
+    t03TipGangZ,            // T03 핑거 gang-local Z
+    t03FingerOffset: t03FingerOff,
+    fingerTop: alDot,
+    fingerBot: alDot,
+  };
+
+  // 초기 위치: 모든 공구가 소재 위에 (T01이 가장 아래이므로 T01 기준)
+  // gangY + t01LocalY(0) > outerR → gangY > outerR
+  const gangRestY = outerR + 10; // 소재 외경 위로 10mm 여유
+  gangRestZ = stickoutLen + 15 + Math.abs(t01TipGangZ);
+  gangGroup.position.set(0, gangRestY, gangRestZ);
+  scene.add(gangGroup);
+
+  /* Camera — 가공 영역(척 우측) 포커스 */
+  camera.position.set(stickoutLen * 0.6, 0, stickoutLen * 1.0);
+  controls.target.set(0, 0, stickoutLen * 0.4);
+  controls.update();
+
+  buildAnimSteps();
+  updateLegend();
+  setStatus(`총 ${result.total}개 | 초기 ${result.pcsChuck}개/척 × ${1 + result.autoPulls}사이클 + 잔여 ${result.remainPcs}개 | 재생 버튼을 눌러주세요`);
+}
+
+/* ── Animation Steps — NC O9002 흐름 기반 ── */
+function buildAnimSteps() {
+  if (!result) return;
+  animSteps = [];
+  const r = result;
+
+  // NC 파라미터 (#506, #507, #505)
+  const Z_ROUGH_MAX = 55;  // #506
+  const Z_ROUGH_FREE = 1;  // #507
+  const unitLen = P.finLen + P.tipWidth; // #505
+  let batchSize = Math.max(1, Math.floor((Z_ROUGH_MAX - Z_ROUGH_FREE) / unitLen)); // #515
+
+  const faceSegs = segments.filter(s => s.type === 'faceCut');
+
+  // 사이클 순서: 0, 1..autoPulls, 잔여(-2)
+  const cycleOrder = [0];
+  for (let a = 1; a <= r.autoPulls; a++) cycleOrder.push(a);
+  if (r.remainPcs > 0) cycleOrder.push(-2);
+
+  const cycleFirstParting = {};
+  cycleOrder.forEach(cyc => {
+    const fp = segments.find(s => s.cycle === cyc && s.type === 'parting');
+    if (fp) cycleFirstParting[cyc] = fp.zStart;
+  });
+
+  animSteps.push({ type: 'spinStart', label: '스핀들 회전 시작' });
+
+  let isFirst = true;
+  let prevCycle = null;
+
+  cycleOrder.forEach(cyc => {
+    const cycSegs = segments.filter(s => s.cycle === cyc);
+    const products = cycSegs.filter(s => s.type === 'product' || s.type === 'residual');
+    const partings = cycSegs.filter(s => s.type === 'parting');
+
+    // ── N210: AL 인출 (첫 사이클 제외) ──
+    if (!isFirst) {
+      const exactPull = (cycleFirstParting[prevCycle] ?? 0) - (cycleFirstParting[cyc] ?? 0);
+      animSteps.push({ type: 'spinStop', label: 'AL 인출 준비' });
+      animSteps.push({
+        type: 'alPull', cycle: cyc, pullDist: exactPull,
+        label: cyc === -2 ? '잔여 가공 위치 이동' : `AL ${cyc}차 인출`
+      });
+      animSteps.push({ type: 'spinStart', label: '스핀들 재회전' });
+
+      // AL 후 파팅 절단
+      const marginSeg = cycSegs.find(s => s.type === 'margin');
+      const rightmostParting = [...partings].sort((a, b) => b.zStart - a.zStart)[0];
+      if (rightmostParting) {
+        animSteps.push({
+          type: 'partCut', seg: rightmostParting, marginSeg: marginSeg,
+          label: 'AL 후 파팅 절단 → 파팅+마진 탈락'
+        });
+      }
+    }
+
+    // ── N100: 페이스컷 (T02 X이동 at Z=0) ──
+    if (faceSegs.length > 0) {
+      const faceSeg = isFirst ? faceSegs[0] : faceSegs.find(s => s.cycle === cyc) || faceSegs[0];
+      const rightParting = partings.length > 0
+        ? [...partings].sort((a, b) => b.zStart - a.zStart)[0] : null;
+      animSteps.push({
+        type: 'faceCut', seg: faceSeg, partSeg: rightParting,
+        label: 'N100 페이스컷 (T02→T01)'
+      });
+    }
+
+    // 제품 정렬: 오른쪽(봉재 끝)부터 왼쪽(척)으로
+    const sorted = [...products].sort((a, b) => b.zStart - a.zStart);
+
+    // 배치 단위로 처리: N130 배치보링 → N160+N180 개별 챔퍼+파팅
+    for (let bStart = 0; bStart < sorted.length; bStart += batchSize) {
+      const batch = sorted.slice(bStart, bStart + batchSize);
+
+      // ── N130: 배치 보링 (T01 X=#111에서 Z방향 한번에) ──
+      animSteps.push({
+        type: 'batchBore', segs: batch,
+        label: `N130 보링 ${batch.length}개 (T01 Z이동)`
+      });
+
+      // ── N160→N180: 개별 챔퍼 + 파팅 ──
+      batch.forEach((prod, i) => {
+        // N160 챔퍼 (T01)
+        animSteps.push({
+          type: 'chamfer', seg: prod,
+          label: `N160 챔퍼 #${bStart + i + 1} (T01)`
+        });
+
+        // N180 파팅 (T02)
+        const leftParting = partings.find(
+          p => Math.abs((p.zStart + p.len) - prod.zStart) < 0.1
+        );
+        if (leftParting) {
+          animSteps.push({
+            type: 'partCut', seg: leftParting, prodSeg: prod,
+            label: `N180 파팅 #${bStart + i + 1} (T02→제품 탈락)`
+          });
+        }
+      });
+    }
+
+    prevCycle = cyc;
+    isFirst = false;
+  });
+
+  animSteps.push({ type: 'spinStop', label: '가공 완료' });
+  animSteps.push({ type: 'done', label: `완료! 총 ${r.total}개 생산` });
+}
+
+/* ── Animation Engine ── */
+let clock = new THREE.Clock();
+
+function updateSpeed() {
+  speedMul = parseFloat(document.getElementById('selSpeed').value);
+}
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? '⏸ 일시정지' : '▶ 재생';
+  if (playing && animIdx >= animSteps.length) resetAnim();
+}
+window.togglePlay = togglePlay;
+
+// 떨어진 제품 메쉬 추적
+let fallenPieces = [];
+
+function resetAnim() {
+  playing = false;
+  animIdx = 0;
+  animT = 0;
+  barSpinning = false;
+  document.getElementById('btnPlay').textContent = '▶ 재생';
+  // Reset segment visuals
+  segments.forEach(seg => {
+    if (seg.mesh) {
+      seg.mesh.material.opacity = 1;
+      seg.mesh.material.transparent = false;
+      seg.mesh.visible = true;
+      seg.mesh.material.emissive = new THREE.Color(0x000000);
+    }
+    seg._fallen = false;
+    seg._origY = 0;
+  });
+  // 떨어진 제품 제거
+  fallenPieces.forEach(m => scene.remove(m));
+  fallenPieces = [];
+  // 갱 툴포스트 초기화
+  if (gangGroup && gangGroup.userData) {
+    resetGripperFingers();
+    gangGroup.position.set(0, curOuterR + 10, gangRestZ);
+  }
+  // barGroup 위치 초기화
+  if (barGroup) {
+    barGroup.position.z = initialBarZ;
+  }
+  if (chuckGroup) chuckGroup.position.z = initialChuckZ;
+  setStatus('리셋 완료 – 재생 버튼을 눌러주세요');
+}
+window.resetAnim = resetAnim;
+
+function setStatus(txt) {
+  document.getElementById('status').textContent = txt;
+}
+
+/* Easing */
+function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+/* 절단바이트 애니메이션 헬퍼 — NC O9002 N180 기반
+   T02: X=#111+1(접근) → X=#111(FIN_OD) → X=#504(FIN_ID-5, 절단완료)
+   3D Y = 공구 worldY = gangY + t02LocalY
+   FIN_OD → outerR (봉재 외경 반지름), FIN_ID-5 → innerR 근처 */
+function animatePartingBlade(p, cutPhaseEnd) {
+  if (!gangGroup || !gangGroup.userData) return;
+  const { t02OpenY, t02CutY, t02LocalY } = gangGroup.userData;
+  const odY = curOuterR;       // T02가 외경 표면에 닿는 Y
+  const idY = t02CutY;         // T02 최대 절입 깊이 (내경까지)
+  // gangY = (T02 worldY) - t02LocalY
+  if (p < 0.08) {
+    // 접근: 대기 → 외경 바로 위
+    const pp = p / 0.08;
+    const targetY = THREE.MathUtils.lerp(t02OpenY, odY + 1, easeInOut(pp));
+    gangGroup.position.y = targetY - t02LocalY;
+  } else if (p < cutPhaseEnd) {
+    // 절단: 외경 → 내경 (NC: X[#111] → X[#504])
+    const pp = (p - 0.08) / (cutPhaseEnd - 0.08);
+    const targetY = THREE.MathUtils.lerp(odY + 1, idY, easeInOut(pp));
+    gangGroup.position.y = targetY - t02LocalY;
+  } else if (p < cutPhaseEnd + 0.08) {
+    // 절단 완료 유지
+    gangGroup.position.y = idY - t02LocalY;
+  } else {
+    // 후퇴: 내경 → 대기
+    const pp = Math.min((p - cutPhaseEnd - 0.08) / 0.12, 1);
+    const targetY = THREE.MathUtils.lerp(idY, t02OpenY, easeInOut(pp));
+    gangGroup.position.y = targetY - t02LocalY;
+  }
+}
+
+/* AL 그리퍼 핑거 리셋 */
+function resetGripperFingers() {
+  if (!gangGroup || !gangGroup.userData) return;
+  const { fingerTop, fingerBot } = gangGroup.userData;
+  if (fingerTop) fingerTop.position.y = curOuterR + 2;
+  if (fingerBot) fingerBot.position.y = -(curOuterR + 2);
+}
+
+/* Step processing */
+let stepState = null;
+
+/* 갱 이동 트랜짓 헬퍼 — 단계 간 부드러운 이동 */
+const TRANSIT_DUR = 0.12; // 전체 진행률 중 트랜짓 비율
+function doTransit(p, targetY, targetZ) {
+  if (p < TRANSIT_DUR) {
+    const pp = easeInOut(p / TRANSIT_DUR);
+    gangGroup.position.y = THREE.MathUtils.lerp(stepState.startGangY, targetY, pp);
+    gangGroup.position.z = THREE.MathUtils.lerp(stepState.startGangZ, targetZ, pp);
+    return -1; // 아직 트랜짓 중
+  }
+  return (p - TRANSIT_DUR) / (1 - TRANSIT_DUR); // 리매핑된 진행률 0~1
+}
+
+function processStep(dt) {
+  if (animIdx >= animSteps.length) { playing = false; return; }
+  const step = animSteps[animIdx];
+
+  if (!stepState) {
+    // Initialize step — 현재 갱 위치 저장 (부드러운 전환용)
+    stepState = {
+      phase: 0, t: 0,
+      startGangY: gangGroup ? gangGroup.position.y : 0,
+      startGangZ: gangGroup ? gangGroup.position.z : 0,
+    };
+    setStatus(step.label);
+  }
+
+  const spd = speedMul;
+  stepState.t += dt * spd;
+
+  switch (step.type) {
+    case 'spinStart':
+      barSpinning = true;
+      nextStep();
+      break;
+
+    case 'spinStop':
+      barSpinning = false;
+      nextStep();
+      break;
+
+    case 'faceCut': {
+      /* NC O9002 N100: T02 Z=0에서 X이동 (외경→내경), 페이스컷 세그먼트 제거 */
+      const dur = 2.0;
+      const p = Math.min(stepState.t / dur, 1);
+      const faceSeg = step.seg;
+      const partSeg = step.partSeg;
+      const { t02LocalY, t02TipGangZ } = gangGroup.userData;
+      // T02를 Z=0 (봉재 끝) 위치로
+      const fcTargetZ = barGroup.position.z - t02TipGangZ;
+      const fcTargetY = (curOuterR + 3) - t02LocalY; // 대기: 외경 위
+      const rp = doTransit(p, fcTargetY, fcTargetZ);
+      if (rp < 0) break;
+
+      // T02 X이동: 외경 위 → 내경 아래 (페이스컷)
+      gangGroup.position.z = fcTargetZ;
+      animatePartingBlade(rp, 0.5);
+      if (rp < 0.6) {
+        const glow = Math.min(rp / 0.4, 1) * 0.3;
+        if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(glow, glow * 0.3, 0);
+      } else {
+        const pp = (rp - 0.6) / 0.4;
+        [faceSeg, partSeg].forEach(s => {
+          if (s && s.mesh) {
+            s.mesh.position.y = -easeInOut(pp) * 35;
+            s.mesh.material.transparent = true;
+            s.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
+          }
+        });
+      }
+      if (rp >= 1) {
+        [faceSeg, partSeg].forEach(s => { if (s && s.mesh) { s.mesh.visible = false; s._fallen = true; } });
+        nextStep();
+      }
+      break;
+    }
+
+    case 'batchBore': {
+      /* NC O9002 N130: T01 X=#111(FIN_OD)에서 Z방향 배치 보링
+         T01은 외경 표면에서 Z축으로 이동 — 여러 제품을 한번에 관통 */
+      const segs = step.segs;
+      const batchLen = segs.length;
+      const dur = 1.0 + batchLen * 0.5; // 배치 크기에 비례
+      const p = Math.min(stepState.t / dur, 1);
+      const { t01LocalY, t01TipGangZ } = gangGroup.userData;
+      // T01 Y위치: 외경 표면 (NC: X=#111 = FIN_OD)
+      const machTargetY = curOuterR - t01LocalY;
+      // Z 범위: 첫 제품 오른쪽 끝 ~ 마지막 제품 왼쪽 끝
+      const firstSeg = segs[0]; // 가장 오른쪽
+      const lastSeg = segs[segs.length - 1]; // 가장 왼쪽
+      const boreStartZ = barGroup.position.z + firstSeg.zStart + firstSeg.len - t01TipGangZ;
+      const boreEndZ = barGroup.position.z + lastSeg.zStart - t01TipGangZ;
+      const restZ = boreStartZ + 10;
+
+      const rp = doTransit(p, machTargetY, restZ);
+      if (rp < 0) break;
+
+      gangGroup.position.y = machTargetY;
+      if (rp < 0.15) {
+        // 접근: 대기 → 보링 시작점
+        const pp = rp / 0.15;
+        gangGroup.position.z = THREE.MathUtils.lerp(restZ, boreStartZ, easeInOut(pp));
+      } else if (rp < 0.75) {
+        // 보링: 오른쪽 → 왼쪽 (Z 전진)
+        const pp = (rp - 0.15) / 0.6;
+        gangGroup.position.z = THREE.MathUtils.lerp(boreStartZ, boreEndZ, easeInOut(pp));
+        // 지나가는 세그먼트 발광
+        segs.forEach(seg => {
+          const segCenter = barGroup.position.z + seg.zStart + seg.len / 2 - t01TipGangZ;
+          const progress = (gangGroup.position.z - boreStartZ) / (boreEndZ - boreStartZ);
+          const segProgress = (segCenter - boreStartZ) / (boreEndZ - boreStartZ);
+          if (progress >= segProgress - 0.1) {
+            const glow = 0.15 + Math.sin(pp * Math.PI * 4) * 0.1;
+            seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
+          }
+        });
+      } else {
+        // 후퇴
+        const pp = (rp - 0.75) / 0.25;
+        gangGroup.position.z = THREE.MathUtils.lerp(boreEndZ, restZ, easeInOut(pp));
+        segs.forEach(seg => {
+          const glow = 0.15 * (1 - pp);
+          seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
+        });
+      }
+      if (rp >= 1) {
+        segs.forEach(seg => seg.mesh.material.emissive = new THREE.Color(0x000000));
+        nextStep();
+      }
+      break;
+    }
+
+    case 'chamfer': {
+      /* NC O9002 N160: T01 챔퍼 가공 — 제품 위치에서 짧은 Z이동 */
+      const dur = 0.8;
+      const p = Math.min(stepState.t / dur, 1);
+      const seg = step.seg;
+      const { t01LocalY, t01TipGangZ } = gangGroup.userData;
+      const machTargetY = curOuterR - t01LocalY;
+      const segZ = barGroup.position.z + seg.zStart + seg.len / 2 - t01TipGangZ;
+      const rp = doTransit(p, machTargetY, segZ + 3);
+      if (rp < 0) break;
+
+      gangGroup.position.y = machTargetY;
+      if (rp < 0.4) {
+        const pp = rp / 0.4;
+        gangGroup.position.z = THREE.MathUtils.lerp(segZ + 3, segZ, easeInOut(pp));
+        seg.mesh.material.emissive = new THREE.Color(0.2, 0.1, 0);
+      } else if (rp < 0.7) {
+        gangGroup.position.z = segZ;
+        seg.mesh.material.emissive = new THREE.Color(0.25, 0.12, 0);
+      } else {
+        const pp = (rp - 0.7) / 0.3;
+        gangGroup.position.z = THREE.MathUtils.lerp(segZ, segZ + 3, easeInOut(pp));
+        seg.mesh.material.emissive = new THREE.Color(0.25 * (1-pp), 0.12 * (1-pp), 0);
+      }
+      if (rp >= 1) {
+        seg.mesh.material.emissive = new THREE.Color(0x000000);
+        nextStep();
+      }
+      break;
+    }
+
+    case 'partCut': {
+      /* NC O9002 N180: T02 파팅 — 외경→내경 절단, 제품+파팅 세그먼트 탈락
+         marginSeg이 있으면 AL 후 파팅 (마진도 같이 탈락) */
+      const dur = 2.2;
+      const p = Math.min(stepState.t / dur, 1);
+      const seg = step.seg;
+      const prodSeg = step.prodSeg;
+      const marginSeg = step.marginSeg;
+      const { t02OpenY: pcOpenY, t02LocalY: pcLocalY, t02TipGangZ: pcTipZ } = gangGroup.userData;
+      const pcTargetZ = barGroup.position.z + seg.zStart + seg.len / 2 - pcTipZ;
+      const pcTargetY = pcOpenY - pcLocalY;
+      const rp = doTransit(p, pcTargetY, pcTargetZ);
+      if (rp < 0) break;
+
+      gangGroup.position.z = pcTargetZ;
+      animatePartingBlade(rp, 0.35);
+      if (rp < 0.5) {
+        const glow = Math.min(rp / 0.35, 1) * 0.4;
+        seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.3, 0);
+      } else if (rp < 0.65) {
+        const pp = (rp - 0.5) / 0.15;
+        seg.mesh.material.emissive = new THREE.Color(0.4*(1-pp), 0.12*(1-pp), 0);
+      } else {
+        const pp = (rp - 0.65) / 0.35;
+        [prodSeg, seg, marginSeg].forEach(s => {
+          if (s && s.mesh && !s._fallen) {
+            s.mesh.position.y = -easeInOut(pp) * 40;
+            s.mesh.material.transparent = true;
+            s.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
+          }
+        });
+      }
+      if (rp >= 1) {
+        [prodSeg, seg, marginSeg].forEach(s => {
+          if (s && s.mesh) { s.mesh.visible = false; s._fallen = true; }
+        });
+        nextStep();
+      }
+      break;
+    }
+
+    case 'alPull': {
+      // 오토링크 인출: 갱 슬라이드 전체로 T03 그리퍼 접근→잡기→당기기→놓기→후퇴
+      const dur = 4.0;
+      const p = Math.min(stepState.t / dur, 1);
+      const pullDist = step.pullDist || (result.machLen + P.tipWidth + P.margin);
+      const { t03LocalY, t03FingerOffset, fingerTop, fingerBot } = gangGroup.userData;
+
+      if (stepState.phase === 0) {
+        stepState.startBarZ = barGroup ? barGroup.position.z : 0;
+        const visSegs = segments.filter(s => !s._fallen && s.mesh && s.mesh.visible);
+        const visRightLocal = visSegs.length > 0
+          ? Math.max(...visSegs.map(s => s.zStart + s.len)) : 0;
+        const barVisRightZ = stepState.startBarZ + visRightLocal;
+        const { t03TipGangZ } = gangGroup.userData;
+        stepState.gripperGrabZ = barVisRightZ - t03TipGangZ;
+        stepState.gripperRestZ = barVisRightZ - t03TipGangZ + 5;
+        stepState.gangYForT03 = -t03LocalY;
+        stepState.phase = 1;
+      }
+
+      const openFY = curOuterR + 2;
+      const closeFY = curOuterR * 0.4;
+
+      // 트랜짓: 현재 위치 → T03 정렬 + 대기 Z
+      const rp = doTransit(p, stepState.gangYForT03, stepState.gripperRestZ);
+      if (rp < 0) break;
+
+      gangGroup.position.y = stepState.gangYForT03;
+
+      if (rp < 0.12) {
+        const pp = rp / 0.12;
+        gangGroup.position.z = THREE.MathUtils.lerp(stepState.gripperRestZ, stepState.gripperGrabZ, easeInOut(pp));
+        fingerTop.position.y = openFY;
+        fingerBot.position.y = -openFY;
+      } else if (rp < 0.22) {
+        gangGroup.position.z = stepState.gripperGrabZ;
+        const pp = (rp - 0.12) / 0.1;
+        const y = THREE.MathUtils.lerp(openFY, closeFY, easeInOut(pp));
+        fingerTop.position.y = y;
+        fingerBot.position.y = -y;
+      } else if (rp < 0.72) {
+        fingerTop.position.y = closeFY;
+        fingerBot.position.y = -closeFY;
+        const pp = (rp - 0.22) / 0.5;
+        const offset = easeInOut(pp) * pullDist;
+        if (barGroup) barGroup.position.z = stepState.startBarZ + offset;
+        gangGroup.position.z = stepState.gripperGrabZ + offset;
+      } else if (rp < 0.82) {
+        if (barGroup) barGroup.position.z = stepState.startBarZ + pullDist;
+        gangGroup.position.z = stepState.gripperGrabZ + pullDist;
+        const pp = (rp - 0.72) / 0.1;
+        const y = THREE.MathUtils.lerp(closeFY, openFY, easeInOut(pp));
+        fingerTop.position.y = y;
+        fingerBot.position.y = -y;
+      } else {
+        if (barGroup) barGroup.position.z = stepState.startBarZ + pullDist;
+        fingerTop.position.y = openFY;
+        fingerBot.position.y = -openFY;
+        const pp = (rp - 0.82) / 0.18;
+        gangGroup.position.z = THREE.MathUtils.lerp(
+          stepState.gripperGrabZ + pullDist, stepState.gripperRestZ + pullDist, easeInOut(pp)
+        );
+      }
+
+      if (rp >= 1) {
+        resetGripperFingers();
+        nextStep();
+      }
+      break;
+    }
+
+    case 'done':
+      setStatus(step.label);
+      playing = false;
+      document.getElementById('btnPlay').textContent = '▶ 재생';
+      animIdx = animSteps.length;
+      stepState = null;
+      return;
+
+    default:
+      nextStep();
+  }
+}
+
+function nextStep() {
+  animIdx++;
+  stepState = null;
+}
+
+/* ── Legend ── */
+function updateLegend() {
+  const pc = '#' + productColor.toString(16).padStart(6, '0');
+  const matName = { 1: 'CN', 2: 'RS40', 3: 'CM' }[P.matType] || '';
+  const items = [
+    ['#d63031', '잔재(스크랩)'],
+    ['#7c1a1a', '조 그립'],
+    ['#3d0c0c', '안전구간'],
+    [pc, `제품(${matName})`],
+    [pc, '잔여제품'],
+    ['#e17055', '파팅'],
+    ['#fdcb6e', '마진'],
+    ['#6c5ce7', '페이스컷'],
+  ];
+  document.getElementById('legend').innerHTML = items.map(
+    ([c, l]) => `<span><b style="background:${c}"></b>${l}</span>`
+  ).join('');
+}
+
+/* ── Rebuild ── */
+function rebuild() {
+  const ml = parseInt(document.getElementById('inMatLen').value) || 543;
+  P.matLen = ml;
+  resetAnim();
+  buildScene(ml);
+}
+window.rebuild = rebuild;
+
+/* ── Resize ── */
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+/* ── Render Loop ── */
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  controls.update();
+
+  // Bar spinning
+  if (barGroup && barSpinning) {
+    barGroup.rotation.z += dt * 12;
+  }
+
+  // Anim
+  if (playing) {
+    processStep(dt);
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ── Init ── */
+document.getElementById('inMatLen').value = P.matLen;
+document.getElementById('paramInfo').textContent =
+  `완성${P.finLen} | 팁${P.tipWidth} | 척${P.chuckInit} | 안전${P.safetyLen} | 좌한${P.chuckLeft} | 척투조${P.chuck2jaw} | 면취${P.faceCut} | 소재${P.matLen}`;
+buildScene(P.matLen);
+clock.start();
+animate();
+</script>
+</body>
+</html>
