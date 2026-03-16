@@ -372,15 +372,15 @@ function buildScene(matLen) {
   chuckGroup.position.z = initialChuckZ;
   scene.add(chuckGroup);
 
-  /* ── 절단바이트: 단일 직사각형 바이트 ── */
+  /* ── 절단바이트: 단일 직사각형 바이트 (소형) ── */
   const toolGroup = new THREE.Group();
   const tBlade = new THREE.Mesh(
-    new THREE.BoxGeometry(P.tipWidth, outerR * 3, 6),
+    new THREE.BoxGeometry(P.tipWidth, outerR * 0.6, 1.2),
     new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.12, roughness: 0.85 })
   );
   toolGroup.add(tBlade);
-  toolGroup.userData = { openY: outerR + 20, cutY: -(outerR + 2) };
-  toolGroup.position.set(0, outerR + 20, stickoutLen / 2);
+  toolGroup.userData = { openY: outerR + 6, cutY: -(outerR + 1) };
+  toolGroup.position.set(0, outerR + 6, stickoutLen / 2);
   toolGroup.visible = false;
   toolMesh = toolGroup;
   scene.add(toolMesh);
@@ -445,9 +445,9 @@ function buildScene(matLen) {
   const alFingerBot = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), fingerMat);
   alFingerBot.position.set(0, -(outerR + 2), -armLen / 2);
   alGroup.add(alFingerBot);
-  // 원점 ≈ 소재 끝 위치에 맞춰 배치 (핑거팁이 -armLen/2에 있으므로 소재끝 + armLen/2)
+  // 조에서 18mm 떨어진 위치에서 대기 (핑거팁이 -armLen/2에 있으므로 보정)
   alGroup.userData = { fingerTop: alFingerTop, fingerBot: alFingerBot, fingerOffset: armLen / 2 };
-  alGroup.position.set(0, 0, stickoutLen + armLen / 2 + 3);
+  alGroup.position.set(0, 0, 18 + armLen / 2);
   alGroup.visible = false;
   alGripperMesh = alGroup;
   scene.add(alGripperMesh);
