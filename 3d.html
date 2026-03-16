@@ -90,10 +90,10 @@ canvas { display: block; }
     <button class="btn btn-gray" onclick="resetAnim()">↺ 리셋</button>
     <label>속도</label>
     <select id="selSpeed" onchange="updateSpeed()">
-      <option value="0.6">느림</option>
-      <option value="2" selected>보통</option>
-      <option value="6">빠름</option>
-      <option value="16">초고속</option>
+      <option value="1.2">느림</option>
+      <option value="4" selected>보통</option>
+      <option value="12">빠름</option>
+      <option value="32">초고속</option>
     </select>
   </div>
   <div id="paramInfo" style="font-size:11px;color:#666;text-align:center;padding:2px 0"></div>
@@ -152,13 +152,15 @@ function calc(p, matLen) {
   return { total, autoPulls, remainPcs, scrap, pcsChuck, machLen, unitW, deadZone };
 }
 
-/* ── Colors ── */
+/* ── Colors (소재타입별 제품색) ── */
+const MAT_COLORS = { 1: 0xf1c40f, 2: 0x74b9ff, 3: 0xdfe6e9 }; // 노랑, 스카이블루, 연회색
+const productColor = MAT_COLORS[P.matType] || 0xdfe6e9;
 const COL = {
   scrap:    0xd63031,
   jawGrip:  0x7c1a1a,
   safety:   0x3d0c0c,
-  product:  0x00b894,
-  residual: 0x0984e3,
+  product:  productColor,
+  residual: productColor,
   parting:  0xe17055,
   margin:   0xfdcb6e,
   sep:      0x636e72,
@@ -204,7 +206,7 @@ gridHelper.position.y = -20;
 scene.add(gridHelper);
 
 /* ── State ── */
-let barGroup, chuckGroup, toolMesh;
+let barGroup, chuckGroup, toolMesh, boringBarMesh;
 let segments = [];      // { mesh, type, zStart, len, cycle }
 let animSteps = [];
 let animIdx = 0, animT = 0, playing = false;
@@ -272,6 +274,7 @@ function buildScene(matLen) {
   if (barGroup) scene.remove(barGroup);
   if (chuckGroup) scene.remove(chuckGroup);
   if (toolMesh) scene.remove(toolMesh);
+  if (boringBarMesh) scene.remove(boringBarMesh);
 
   if (!buildSegments(matLen)) return;
 
@@ -376,6 +379,28 @@ function buildScene(matLen) {
   toolMesh.castShadow = true;
   toolMesh.visible = false;
   scene.add(toolMesh);
+
+  /* Boring Bar — 위아래 절단바이트 달린 보링바 */
+  const bbGroup = new THREE.Group();
+  const bbMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 });
+  const bbTipMat = new THREE.MeshStandardMaterial({ color: 0xf0c040, metalness: 0.6, roughness: 0.4 });
+  // 바 본체 (긴 사각봉)
+  const bbBody = new THREE.Mesh(new THREE.BoxGeometry(3, 3, P.finLen * 1.2), bbMat);
+  bbGroup.add(bbBody);
+  // 상단 절단바이트
+  const tipGeo = new THREE.BoxGeometry(1.5, 2, 2);
+  const tipTop = new THREE.Mesh(tipGeo, bbTipMat);
+  tipTop.position.set(0, 2.5, P.finLen * 0.5);
+  bbGroup.add(tipTop);
+  // 하단 절단바이트
+  const tipBot = new THREE.Mesh(tipGeo, bbTipMat);
+  tipBot.position.set(0, -2.5, P.finLen * 0.5);
+  bbGroup.add(tipBot);
+  bbGroup.position.set(outerR + 25, 0, 0);
+  bbGroup.visible = false;
+  bbGroup.castShadow = true;
+  boringBarMesh = bbGroup;
+  scene.add(boringBarMesh);
 
   /* Camera — 가공 영역(척 우측) 포커스 */
   camera.position.set(stickoutLen * 0.6, stickoutLen * 0.4, stickoutLen * 1.0);
@@ -528,6 +553,7 @@ function resetAnim() {
   fallenPieces.forEach(m => scene.remove(m));
   fallenPieces = [];
   if (toolMesh) toolMesh.visible = false;
+  if (boringBarMesh) boringBarMesh.visible = false;
   // barGroup 위치 초기화 (척은 항상 z=0 고정)
   if (barGroup) {
     barGroup.position.z = initialBarZ;
@@ -627,13 +653,38 @@ function processStep(dt) {
     }
 
     case 'machine': {
-      const dur = 0.8;
+      // 보링바 진입 → 내경 가공 → 후퇴
+      const dur = 1.6;
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
-      // Glow effect during machining
-      const glow = Math.sin(p * Math.PI) * 0.3;
-      seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.5, 0);
+      const segCenterZ = barGroup.position.z + seg.zStart + seg.len / 2;
+      const restX = curOuterR + 25;
+
+      boringBarMesh.visible = true;
+      boringBarMesh.position.z = segCenterZ;
+
+      if (p < 0.3) {
+        // 보링바 진입 (우측에서 소재 중심으로)
+        const pp = p / 0.3;
+        boringBarMesh.position.x = THREE.MathUtils.lerp(restX, 0, easeInOut(pp));
+        const glow = pp * 0.3;
+        seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.5, 0);
+      } else if (p < 0.7) {
+        // 내경 가공 중 (중심에서 미세 진동 + 발광)
+        boringBarMesh.position.x = Math.sin(p * 40) * 0.3;
+        const glow = 0.3 + Math.sin(p * Math.PI * 4) * 0.1;
+        seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
+      } else {
+        // 보링바 후퇴
+        const pp = (p - 0.7) / 0.3;
+        boringBarMesh.position.x = THREE.MathUtils.lerp(0, restX, easeInOut(pp));
+        const glow = 0.3 * (1 - pp);
+        seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
+      }
+
       if (p >= 1) {
+        boringBarMesh.visible = false;
+        boringBarMesh.position.x = restX;
         seg.mesh.material.emissive = new THREE.Color(0x000000);
         nextStep();
       }
@@ -798,12 +849,14 @@ function nextStep() {
 
 /* ── Legend ── */
 function updateLegend() {
+  const pc = '#' + productColor.toString(16).padStart(6, '0');
+  const matName = { 1: 'CN', 2: 'RS40', 3: 'CM' }[P.matType] || '';
   const items = [
     ['#d63031', '잔재(스크랩)'],
     ['#7c1a1a', '조 그립'],
     ['#3d0c0c', '안전구간'],
-    ['#00b894', '제품'],
-    ['#0984e3', '잔여제품'],
+    [pc, `제품(${matName})`],
+    [pc, '잔여제품'],
     ['#e17055', '파팅'],
     ['#fdcb6e', '마진'],
     ['#6c5ce7', '페이스컷'],
