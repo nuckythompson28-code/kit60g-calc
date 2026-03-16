@@ -352,12 +352,13 @@ function buildAnimSteps() {
   for (let a = 1; a <= r.autoPulls; a++) cycleOrder.push(a);
   if (r.remainPcs > 0) cycleOrder.push(-2);
 
-  // Face cut first
+  // 갱타입 가공 순서:
+  // 1) 스핀들 시작
+  // 2) 페이스컷 + 첫 파팅 동시 (파팅이 잘리면서 페이스컷 부분 자동 탈락)
+  // 3) 이후 반복: 보링(제품 가공) → 파팅(절단)
+
   const faceSegs = segments.filter(s => s.type === 'faceCut');
-  if (faceSegs.length > 0) {
-    animSteps.push({ type: 'spinStart', label: '스핀들 회전 시작' });
-    animSteps.push({ type: 'faceCut', seg: faceSegs[0], label: '페이스 커팅' });
-  }
+  animSteps.push({ type: 'spinStart', label: '스핀들 회전 시작' });
 
   let isFirst = true;
   cycleOrder.forEach(cyc => {
@@ -374,24 +375,38 @@ function buildAnimSteps() {
       animSteps.push({ type: 'spinStart', label: '스핀들 재회전' });
     }
 
-    // Machine pieces right to left (face side first) for this cycle
-    // 제품의 왼쪽 파팅을 잘라야 제품이 떨어져 나감
+    // 제품을 face쪽(오른쪽)부터 척쪽(왼쪽)으로 가공
     const sortedProducts = [...products].sort((a, b) => b.zStart - a.zStart);
 
     sortedProducts.forEach((prod, i) => {
+      if (isFirst && i === 0 && faceSegs.length > 0) {
+        // 첫 제품: 페이스컷 + 파팅 동시 (파팅이 잘리면 페이스컷 부분도 탈락)
+        const rightParting = partings.find(
+          p => Math.abs(p.zStart - (prod.zStart + prod.len)) < 0.1
+        );
+        animSteps.push({
+          type: 'facePart', seg: faceSegs[0],
+          partSeg: rightParting, prodSeg: prod,
+          label: '페이스컷 + 파팅 동시 절단'
+        });
+      }
+
+      // 보링 (제품 가공)
       const pType = prod.type === 'residual' ? '잔여' : '';
       animSteps.push({
         type: 'machine', seg: prod,
-        label: `${pType}제품 가공 (${cyc >= 0 ? cyc + '사이클' : '잔여'} #${i + 1})`
+        label: `${pType}제품 보링 (${cyc >= 0 ? cyc + '사이클' : '잔여'} #${i + 1})`
       });
-      // 제품 왼쪽의 파팅 찾기 (zStart + len ≈ prod.zStart)
+
+      // 파팅 (왼쪽 파팅을 잘라서 제품 탈락)
+      // 첫 제품은 이미 위에서 페이스컷+파팅 처리됨 → 왼쪽 파팅만
       const leftParting = partings.find(
         p => Math.abs((p.zStart + p.len) - prod.zStart) < 0.1
       );
       if (leftParting) {
         animSteps.push({
           type: 'partCut', seg: leftParting, prodSeg: prod,
-          label: '파팅 절단'
+          label: '파팅 절단 → 제품 탈락'
         });
       }
     });
@@ -471,21 +486,42 @@ function processStep(dt) {
       nextStep();
       break;
 
-    case 'faceCut': {
-      const dur = 1.5;
+    case 'facePart': {
+      // 페이스컷 + 파팅 동시 절단: 파팅이 잘리면서 페이스컷 부분도 탈락
+      const dur = 2.0;
       const p = Math.min(stepState.t / dur, 1);
+      const faceSeg = step.seg;
+      const partSeg = step.partSeg;
       toolMesh.visible = true;
-      const seg = step.seg;
-      const wz = barGroup.position.z + seg.zStart + seg.len / 2;
-      toolMesh.position.z = wz;
-      // Move tool down
+      // 파팅 위치에서 툴 진입
+      if (partSeg) {
+        const wz = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
+        toolMesh.position.z = wz;
+      }
       const startY = BAR_R + 22;
-      const endY = 0;
-      toolMesh.position.y = THREE.MathUtils.lerp(startY, endY, easeInOut(p));
+      if (p < 0.5) {
+        // 툴 진입
+        toolMesh.position.y = THREE.MathUtils.lerp(startY, 0, easeInOut(p / 0.5));
+        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.4 * (p/0.5), 0.15 * (p/0.5), 0);
+        if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(0.3 * (p/0.5), 0.1 * (p/0.5), 0);
+      } else if (p < 0.7) {
+        // 절단 유지
+        toolMesh.position.y = 0;
+      } else {
+        // 툴 후퇴 + 페이스컷 부분 투명화 (탈락)
+        const pp = (p - 0.7) / 0.3;
+        toolMesh.position.y = THREE.MathUtils.lerp(0, startY, easeInOut(pp));
+        if (faceSeg) {
+          faceSeg.mesh.material.transparent = true;
+          faceSeg.mesh.material.opacity = 1 - pp * 0.7;
+        }
+        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0, 0, 0);
+      }
       if (p >= 1) {
-        seg.mesh.material.emissive = new THREE.Color(0x222222);
-        toolMesh.position.y = startY;
         toolMesh.visible = false;
+        toolMesh.position.y = startY;
+        if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(0x222222);
+        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0, 0, 0);
         nextStep();
       }
       break;
