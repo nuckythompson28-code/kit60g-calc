@@ -372,15 +372,20 @@ function buildScene(matLen) {
   chuckGroup.position.z = initialChuckZ;
   scene.add(chuckGroup);
 
-  /* ── 절단바이트: 단일 직사각형 바이트 (소형) ── */
+  /* ── 절단바이트: 단일 직사각형 바이트 (NC코드 기반 위치) ── */
+  /* NC O9002 N180: X[#111+1] → X[#504] (#112-5) = finOD+1 → finID-5 */
+  /* 3D에서 Y축 = CNC X축(반경방향), outerR = rawOD/2 */
   const toolGroup = new THREE.Group();
   const tBlade = new THREE.Mesh(
     new THREE.BoxGeometry(P.tipWidth, outerR * 0.6, 1.2),
     new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.12, roughness: 0.85 })
   );
   toolGroup.add(tBlade);
-  toolGroup.userData = { openY: outerR + 6, cutY: -(outerR + 1) };
-  toolGroup.position.set(0, outerR + 6, stickoutLen / 2);
+  /* NC기반: 접근=OD+1(반경+0.5), 절단=ID-5(반경-2.5) or 솔리드면 중심 아래 2mm */
+  const t02OpenY = outerR + 1.5;
+  const t02CutY = innerR > 0 ? -(innerR + 2) : -2;
+  toolGroup.userData = { openY: t02OpenY, cutY: t02CutY };
+  toolGroup.position.set(0, t02OpenY, stickoutLen / 2);
   toolGroup.visible = false;
   toolMesh = toolGroup;
   scene.add(toolMesh);
@@ -621,20 +626,27 @@ function setStatus(txt) {
 /* Easing */
 function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
 
-/* 절단바이트 애니메이션 헬퍼 (위→아래 단일 바이트) */
+/* 절단바이트 애니메이션 헬퍼 (NC코드 기반)
+   NC O9002 N180: G00 X[#111+1] → G01 X[#111] → U-[#118*2] W-[#118] → X[#504]
+   = 급속접근(OD+1) → 느린피드(OD) → 챔퍼(대각) → 관통(ID-5) → 급속복귀 */
 function animatePartingBlade(p, cutPhaseEnd) {
   if (!toolMesh || !toolMesh.userData) return;
   const { openY, cutY } = toolMesh.userData;
-  if (p < cutPhaseEnd) {
-    // 바이트 하강 (위→소재 아래)
-    const pp = p / cutPhaseEnd;
-    toolMesh.position.y = THREE.MathUtils.lerp(openY, cutY, easeInOut(pp));
-  } else if (p < cutPhaseEnd + 0.15) {
-    // 절단 유지
+  const odY = curOuterR * 0.5;  // OD 표면 근처 (바이트가 소재에 닿는 지점)
+  if (p < 0.08) {
+    // Phase 1: 급속 접근 G00 X[#111+1] → OD 바로 위
+    const pp = p / 0.08;
+    toolMesh.position.y = THREE.MathUtils.lerp(openY, odY + 1, easeInOut(pp));
+  } else if (p < cutPhaseEnd) {
+    // Phase 2: 절삭 이송 G01 X[#111] → X[#504] (OD에서 ID까지 느리게)
+    const pp = (p - 0.08) / (cutPhaseEnd - 0.08);
+    toolMesh.position.y = THREE.MathUtils.lerp(odY + 1, cutY, easeInOut(pp));
+  } else if (p < cutPhaseEnd + 0.08) {
+    // Phase 3: 절단 완료 유지
     toolMesh.position.y = cutY;
   } else {
-    // 바이트 상승 (복귀)
-    const pp = Math.min((p - cutPhaseEnd - 0.15) / 0.2, 1);
+    // Phase 4: 급속 복귀 G00 (빠르게 올라감)
+    const pp = Math.min((p - cutPhaseEnd - 0.08) / 0.12, 1);
     toolMesh.position.y = THREE.MathUtils.lerp(cutY, openY, easeInOut(pp));
   }
 }
@@ -679,6 +691,8 @@ function processStep(dt) {
       break;
 
     case 'facePart': {
+      /* NC O9002 N100: G00 X[#501] Z0 → G01 X[#502] (OD+4 → ID-3.5)
+         페이스컷은 파팅보다 약간 넓은 범위로 X 이동 */
       const dur = 2.5;
       const p = Math.min(stepState.t / dur, 1);
       const faceSeg = step.seg;
@@ -686,7 +700,6 @@ function processStep(dt) {
       toolMesh.visible = true;
       if (partSeg) toolMesh.position.z = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
 
-      // 집게 닫힘(0~0.4) → 유지(0.4~0.55) → 열림(0.55~0.75) → 탈락(0.75~1)
       animatePartingBlade(p, 0.4);
       if (p < 0.55) {
         const glow = Math.min(p / 0.4, 1) * 0.4;
