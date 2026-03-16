@@ -381,16 +381,27 @@ function buildAnimSteps() {
   const faceSegs = segments.filter(s => s.type === 'faceCut');
   animSteps.push({ type: 'spinStart', label: '스핀들 회전 시작' });
 
+  // 각 사이클별 첫 파팅 위치 계산 (정확한 pullDist 산출용)
+  const cycleFirstParting = {};
+  cycleOrder.forEach(cyc => {
+    const fp = segments.find(s => s.cycle === cyc && s.type === 'parting');
+    if (fp) cycleFirstParting[cyc] = fp.zStart;
+  });
+
   let isFirst = true;
+  let prevCycle = null;
   cycleOrder.forEach(cyc => {
     const cycSegs = segments.filter(s => s.cycle === cyc);
     const products = cycSegs.filter(s => s.type === 'product' || s.type === 'residual');
     const partings = cycSegs.filter(s => s.type === 'parting');
 
     if (!isFirst) {
+      // 실제 세그먼트 간격 기반 pullDist (이전 사이클 첫파팅 ~ 현재 사이클 첫파팅)
+      const exactPull = (cycleFirstParting[prevCycle] ?? 0) - (cycleFirstParting[cyc] ?? 0);
+
       animSteps.push({ type: 'spinStop', label: 'AL 인출 준비' });
       animSteps.push({
-        type: 'alPull', cycle: cyc,
+        type: 'alPull', cycle: cyc, pullDist: exactPull,
         label: cyc === -2 ? '잔여 가공 위치 이동' : `AL ${cyc}차 인출`
       });
       animSteps.push({ type: 'spinStart', label: '스핀들 재회전' });
@@ -442,6 +453,7 @@ function buildAnimSteps() {
       }
     });
 
+    prevCycle = cyc;
     isFirst = false;
   });
 
@@ -663,7 +675,7 @@ function processStep(dt) {
       // 오토링크 인출: 봉재만 +Z 방향으로 전진 (척은 고정)
       const dur = 2.5;
       const p = Math.min(stepState.t / dur, 1);
-      const pullDist = result.machLen + P.tipWidth + P.margin;
+      const pullDist = step.pullDist || (result.machLen + P.tipWidth + P.margin);
 
       // 스텝 시작 시 현재 위치 기록
       if (stepState.phase === 0) {
