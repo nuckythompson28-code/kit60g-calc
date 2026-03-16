@@ -834,12 +834,14 @@ function processStep(dt) {
 
       if (stepState.phase === 0) {
         stepState.startBarZ = barGroup ? barGroup.position.z : 0;
-        const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
-        const barRightZ = stepState.startBarZ + totalLen;
-        // 핑거가 -Z에 있으므로 그룹 Z = barRightZ + fingerOffset 이면 핑거가 바 끝에 위치
+        // 보이는 세그먼트 중 가장 오른쪽 끝 (잘려나간 건 제외)
+        const visSegs = segments.filter(s => !s._fallen && s.mesh && s.mesh.visible);
+        const visRightLocal = visSegs.length > 0
+          ? Math.max(...visSegs.map(s => s.zStart + s.len)) : 0;
+        const barVisRightZ = stepState.startBarZ + visRightLocal;
         const fOff = alGripperMesh.userData.fingerOffset || 0;
-        stepState.gripperGrabZ = barRightZ + fOff;
-        stepState.gripperRestZ = barRightZ + fOff + 5;
+        stepState.gripperGrabZ = barVisRightZ + fOff;
+        stepState.gripperRestZ = barVisRightZ + fOff + 5;
         stepState.phase = 1;
       }
 
