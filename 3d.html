@@ -243,6 +243,9 @@ function buildSegments(matLen) {
     push(P.finLen, 'product', 0);
   }
 
+  // 페이스컷 왼쪽 파팅 (페이스컷+파팅 동시 절단용)
+  push(P.tipWidth, 'parting', 0);
+
   // Face cut
   push(P.faceCut, 'faceCut', 0);
 
@@ -456,10 +459,11 @@ function resetAnim() {
   fallenPieces.forEach(m => scene.remove(m));
   fallenPieces = [];
   if (toolMesh) toolMesh.visible = false;
-  // barGroup 위치 초기화
+  // barGroup + chuckGroup 위치 초기화
   if (barGroup && result) {
     const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
     barGroup.position.z = -totalLen / 2;
+    if (chuckGroup) chuckGroup.position.z = -totalLen / 2 - 1;
   }
   setStatus('리셋 완료 – 재생 버튼을 눌러주세요');
 }
@@ -619,29 +623,31 @@ function processStep(dt) {
     }
 
     case 'alPull': {
-      // 오토링크 인출: 봉재가 face쪽(+Z)으로 밀려나옴
+      // 오토링크 인출: 봉재+척이 face쪽(+Z)으로 밀려나옴
       const dur = 2.5;
       const p = Math.min(stepState.t / dur, 1);
       const pullDist = result.machLen + P.tipWidth + P.margin;
 
-      if (p < 0.2) {
-        // 정지 대기 (척 풀림 표시)
-      } else if (p < 0.8) {
-        // 봉재 이동 (+Z 방향으로 pullDist만큼)
-        const pp = (p - 0.2) / 0.6;
-        if (barGroup) {
-          const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
-          const baseZ = -totalLen / 2;
-          const alCount = step.cycle === -2 ? result.autoPulls : step.cycle;
-          const prevPull = (alCount - 1) * pullDist;
-          barGroup.position.z = baseZ + prevPull + easeInOut(pp) * pullDist;
-        }
-        // 척도 함께 이동
-        if (chuckGroup && barGroup) {
-          chuckGroup.position.z = barGroup.position.z - 1;
-        }
+      // 스텝 시작 시 현재 위치 기록
+      if (stepState.phase === 0) {
+        stepState.startBarZ = barGroup ? barGroup.position.z : 0;
+        stepState.startChuckZ = chuckGroup ? chuckGroup.position.z : 0;
+        stepState.phase = 1;
+      }
+
+      if (p < 0.15) {
+        // 척 풀림 대기
+      } else if (p < 0.85) {
+        // 봉재+척 이동
+        const pp = (p - 0.15) / 0.7;
+        const offset = easeInOut(pp) * pullDist;
+        if (barGroup) barGroup.position.z = stepState.startBarZ + offset;
+        if (chuckGroup) chuckGroup.position.z = stepState.startChuckZ + offset;
       } else {
         // 척 재고정
+        const finalOffset = pullDist;
+        if (barGroup) barGroup.position.z = stepState.startBarZ + finalOffset;
+        if (chuckGroup) chuckGroup.position.z = stepState.startChuckZ + finalOffset;
       }
 
       if (p >= 1) {
