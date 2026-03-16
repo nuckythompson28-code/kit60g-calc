@@ -378,23 +378,16 @@ function buildScene(matLen) {
   const TOOL_SP = outerR + 8; // 공구간 Y 간격
   const gangMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.2, roughness: 0.8 });
 
-  // 베이스 플레이트 (툴포스트 본체)
+  // 베이스 플레이트 (툴포스트 본체 — T01~T03 뒤쪽 연결판)
   const basePlate = new THREE.Mesh(
     new THREE.BoxGeometry(8, TOOL_SP * 2 + 14, 28), gangMat
   );
-  basePlate.position.set(0, TOOL_SP, 16);
+  basePlate.position.set(0, TOOL_SP, 16); // 3개 공구 중심
   gangGroup.add(basePlate);
 
-  /* T02 (절단바이트) — gangLocal Y=0, Z=0 */
-  const tBlade = new THREE.Mesh(
-    new THREE.BoxGeometry(P.tipWidth, outerR * 0.6, 1.2),
-    new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.12, roughness: 0.85 })
-  );
-  tBlade.position.set(0, 0, 0);
-  gangGroup.add(tBlade);
-  toolMesh = tBlade; // 이펙트 참조용
+  /* 실제 KIT60G 배치: T01(하단) → T02(중단) → T03(상단) */
 
-  /* T01 (보링바) — gangLocal Y=TOOL_SP */
+  /* T01 (보링바) — gangLocal Y=0 (맨 아래) */
   const t01Sub = new THREE.Group();
   const bbMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.12, roughness: 0.85 });
   const bbH1 = new THREE.Mesh(new THREE.BoxGeometry(14, 14, 18), bbMat);
@@ -420,11 +413,20 @@ function buildScene(matLen) {
   bbTip.position.z = -(bbBarLen + 1.5);
   t01Sub.add(bbTip);
   const bbTipOffset = bbBarLen + 1.5;
-  t01Sub.position.set(0, TOOL_SP, 0);
+  t01Sub.position.set(0, 0, 0);
   gangGroup.add(t01Sub);
   boringBarMesh = t01Sub;
 
-  /* T03 (AL 그리퍼) — gangLocal Y=TOOL_SP*2 */
+  /* T02 (절단바이트) — gangLocal Y=TOOL_SP (중간) */
+  const tBlade = new THREE.Mesh(
+    new THREE.BoxGeometry(P.tipWidth, outerR * 0.6, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.12, roughness: 0.85 })
+  );
+  tBlade.position.set(0, TOOL_SP, 0);
+  gangGroup.add(tBlade);
+  toolMesh = tBlade;
+
+  /* T03 (AL 그리퍼) — gangLocal Y=TOOL_SP*2 (맨 위) */
   const t03Sub = new THREE.Group();
   const alMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, metalness: 0.1, roughness: 0.85 });
   const fingerMat = new THREE.MeshStandardMaterial({ color: 0x5a5a5a, metalness: 0.1, roughness: 0.8 });
@@ -449,23 +451,24 @@ function buildScene(matLen) {
   gangGroup.add(t03Sub);
   alGripperMesh = t03Sub;
 
-  // 갱 메타데이터
+  // 갱 메타데이터 (실제 배치: T01=0, T02=SP, T03=SP*2)
   const t02OpenY = outerR + 1.5;
   const t02CutY = innerR > 0 ? -(innerR + 2) : -2;
   gangGroup.userData = {
     toolSpacing: TOOL_SP,
+    t01LocalY: 0,           // T01 맨 아래
+    t02LocalY: TOOL_SP,     // T02 중간
+    t03LocalY: TOOL_SP * 2, // T03 맨 위
     t02OpenY, t02CutY,
     t01TipOffset: bbTipOffset,
-    t01LocalY: TOOL_SP,
-    t03LocalY: TOOL_SP * 2,
     t03FingerOffset: armLen / 2,
     fingerTop: alFingerTop,
     fingerBot: alFingerBot,
   };
 
-  // 초기 위치: T02 기준 대기
+  // 초기 위치: T02(중간) 기준 대기 → gangY = t02OpenY - t02LocalY
   gangRestZ = stickoutLen + 15;
-  gangGroup.position.set(0, t02OpenY, gangRestZ);
+  gangGroup.position.set(0, t02OpenY - TOOL_SP, gangRestZ);
   scene.add(gangGroup);
 
   /* Camera — 가공 영역(척 우측) 포커스 */
@@ -621,7 +624,7 @@ function resetAnim() {
   // 갱 툴포스트 초기화
   if (gangGroup && gangGroup.userData) {
     resetGripperFingers();
-    gangGroup.position.set(0, gangGroup.userData.t02OpenY, gangRestZ);
+    gangGroup.position.set(0, gangGroup.userData.t02OpenY - gangGroup.userData.t02LocalY, gangRestZ);
   }
   // barGroup 위치 초기화
   if (barGroup) {
@@ -641,22 +644,26 @@ function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2)
 
 /* 절단바이트 애니메이션 헬퍼 — 갱 전체 Y 이동 (NC코드 기반)
    NC O9002 N180: G00 X[#111+1] → G01 X[#111] → U-[#118*2] W-[#118] → X[#504]
-   갱 슬라이드가 Y축으로 이동 → T02(localY=0) 기준 */
+   T02는 gangLocal Y=t02LocalY → gangY = targetY - t02LocalY */
 function animatePartingBlade(p, cutPhaseEnd) {
   if (!gangGroup || !gangGroup.userData) return;
-  const { t02OpenY, t02CutY } = gangGroup.userData;
+  const { t02OpenY, t02CutY, t02LocalY } = gangGroup.userData;
   const odY = curOuterR * 0.5;
+  // gangY = (T02가 도달할 worldY) - t02LocalY
   if (p < 0.08) {
     const pp = p / 0.08;
-    gangGroup.position.y = THREE.MathUtils.lerp(t02OpenY, odY + 1, easeInOut(pp));
+    const targetY = THREE.MathUtils.lerp(t02OpenY, odY + 1, easeInOut(pp));
+    gangGroup.position.y = targetY - t02LocalY;
   } else if (p < cutPhaseEnd) {
     const pp = (p - 0.08) / (cutPhaseEnd - 0.08);
-    gangGroup.position.y = THREE.MathUtils.lerp(odY + 1, t02CutY, easeInOut(pp));
+    const targetY = THREE.MathUtils.lerp(odY + 1, t02CutY, easeInOut(pp));
+    gangGroup.position.y = targetY - t02LocalY;
   } else if (p < cutPhaseEnd + 0.08) {
-    gangGroup.position.y = t02CutY;
+    gangGroup.position.y = t02CutY - t02LocalY;
   } else {
     const pp = Math.min((p - cutPhaseEnd - 0.08) / 0.12, 1);
-    gangGroup.position.y = THREE.MathUtils.lerp(t02CutY, t02OpenY, easeInOut(pp));
+    const targetY = THREE.MathUtils.lerp(t02CutY, t02OpenY, easeInOut(pp));
+    gangGroup.position.y = targetY - t02LocalY;
   }
 }
 
@@ -736,8 +743,8 @@ function processStep(dt) {
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
       const { t01TipOffset, t01LocalY } = gangGroup.userData;
-      // 갱 Y: T01(localY=t01LocalY)이 봉재 중심(Y≈0) 위치
-      gangGroup.position.y = (curOuterR - 2) - t01LocalY;
+      // 갱 Y: T01(localY=0)이 봉재 중심(Y≈outerR-2) 위치
+      gangGroup.position.y = (curOuterR - 2) - t01LocalY; // t01LocalY=0이므로 outerR-2
       // T01 팁 월드Z = gangGroup.z + 0 - t01TipOffset
       const segRightZ = barGroup.position.z + seg.zStart + seg.len;
       const grpAtRight = segRightZ + t01TipOffset;
