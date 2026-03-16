@@ -203,6 +203,7 @@ let segments = [];      // { mesh, type, zStart, len, cycle }
 let animSteps = [];
 let animIdx = 0, animT = 0, playing = false;
 let initialBarZ = 0;   // 초기 barGroup.position.z (리셋용)
+let initialChuckZ = 0; // 초기 chuckGroup.position.z (리셋용)
 let speedMul = 1;
 let barSpinning = false;
 let result = null;
@@ -329,8 +330,13 @@ function buildScene(matLen) {
   ring.castShadow = true;
   chuckGroup.add(ring);
 
-  // 척 고정 위치: world z = -20 (조가 바이트와 간섭 안되게 왼쪽으로)
-  chuckGroup.position.z = -20;
+  // 척 위치: 사이클0 첫 파팅 왼쪽 끝에서 #530+#532 만큼 왼쪽
+  // 조의 우측 끝(jaw tip)이 그 위치에 오도록 배치
+  const firstCycle0Part = segments.find(s => s.cycle === 0 && s.type === 'parting');
+  const firstPartWorldZ = initialBarZ + (firstCycle0Part ? firstCycle0Part.zStart : 0);
+  const jawTipLocalZ = 13; // jaw center z=3, half-length=10 → tip at z=13
+  initialChuckZ = firstPartWorldZ - (P.safetyLen + P.chuck2jaw) - jawTipLocalZ;
+  chuckGroup.position.z = initialChuckZ;
   scene.add(chuckGroup);
 
   /* Parting Tool */
@@ -388,6 +394,16 @@ function buildAnimSteps() {
         label: cyc === -2 ? '잔여 가공 위치 이동' : `AL ${cyc}차 인출`
       });
       animSteps.push({ type: 'spinStart', label: '스핀들 재회전' });
+
+      // AL 인출 후 마진 옆 파팅 절단 (#123 당긴 후 #114 절단)
+      const marginSeg = cycSegs.find(s => s.type === 'margin');
+      const rightmostParting = [...partings].sort((a, b) => b.zStart - a.zStart)[0];
+      if (rightmostParting && marginSeg) {
+        animSteps.push({
+          type: 'partCut', seg: rightmostParting, prodSeg: marginSeg,
+          label: 'AL 후 파팅 절단 (마진 제거)'
+        });
+      }
     }
 
     // 제품을 face쪽(오른쪽)부터 척쪽(왼쪽)으로 가공
@@ -475,7 +491,7 @@ function resetAnim() {
   if (barGroup) {
     barGroup.position.z = initialBarZ;
   }
-  if (chuckGroup) chuckGroup.position.z = 0;
+  if (chuckGroup) chuckGroup.position.z = initialChuckZ;
   setStatus('리셋 완료 – 재생 버튼을 눌러주세요');
 }
 window.resetAnim = resetAnim;
