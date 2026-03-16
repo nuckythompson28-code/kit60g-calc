@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>KIT60G 3D 가공 시뮬레이션</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'Malgun Gothic', sans-serif;
+  background: #1a1a2e; color: #e0e0e0;
+  overflow: hidden; height: 100vh;
+}
+#ui {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+  padding: 10px 14px; background: linear-gradient(180deg, rgba(26,26,46,0.97) 80%, rgba(26,26,46,0));
+  pointer-events: none;
+}
+#ui > * { pointer-events: auto; }
+h1 {
+  font-size: 17px; color: #00d4ff; text-align: center;
+  margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #333;
+}
+h1 a { color: #888; font-size: 12px; text-decoration: none; margin-left: 10px; }
+h1 a:hover { color: #00d4ff; }
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  justify-content: center; margin-bottom: 6px;
+}
+.toolbar label { font-size: 12px; color: #aaa; }
+.toolbar input {
+  width: 70px; padding: 5px 6px; border: 1px solid #444; border-radius: 5px;
+  background: #0f3460; color: #fff; font-size: 13px; text-align: center;
+}
+.toolbar select {
+  padding: 5px 6px; border: 1px solid #444; border-radius: 5px;
+  background: #0f3460; color: #fff; font-size: 12px;
+}
+.btn {
+  padding: 6px 14px; border: none; border-radius: 6px;
+  font-size: 12px; font-weight: bold; cursor: pointer; color: #fff;
+}
+.btn-red { background: #e94560; }
+.btn-red:active { background: #c73550; }
+.btn-blue { background: #0984e3; }
+.btn-blue:active { background: #0770c2; }
+.btn-green { background: #00b894; }
+.btn-green:active { background: #009975; }
+.btn-gray { background: #636e72; }
+.btn-gray:active { background: #4a5558; }
+#status {
+  text-align: center; font-size: 13px; color: #fdcb6e;
+  min-height: 20px; padding: 4px 0;
+}
+#legend {
+  display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: center;
+  font-size: 11px; color: #aaa; padding: 2px 0;
+}
+#legend span { display: flex; align-items: center; gap: 3px; }
+#legend span b {
+  display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+}
+canvas { display: block; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="ui">
+  <h1>KIT60G 3D 가공 시뮬레이션 <a href="index.html">← 계산기</a></h1>
+  <div class="toolbar">
+    <label>소재길이</label>
+    <input id="inMatLen" type="number" value="543" step="1">
+    <label>mm</label>
+    <button class="btn btn-red" onclick="rebuild()">재생성</button>
+    <span style="width:8px"></span>
+    <button class="btn btn-green" id="btnPlay" onclick="togglePlay()">▶ 재생</button>
+    <button class="btn btn-gray" onclick="resetAnim()">↺ 리셋</button>
+    <label>속도</label>
+    <select id="selSpeed" onchange="updateSpeed()">
+      <option value="0.3">느림</option>
+      <option value="1" selected>보통</option>
+      <option value="3">빠름</option>
+      <option value="8">초고속</option>
+    </select>
+  </div>
+  <div id="status">재생 버튼을 눌러주세요</div>
+  <div id="legend"></div>
+</div>
+
+<canvas id="c"></canvas>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ── Parameters ── */
+const P = {
+  finLen: 8.0,
+  tipWidth: 2.0,
+  chuckInit: 75,
+  safetyLen: 12,
+  chuckLeft: 15,
+  chuck2jaw: 1.03,
+  faceCut: 1,
+  margin: 0.2,
+  matType: 3,
+  matLen: 543
+};
+const BAR_R = 8;
+
+/* ── Calculation ── */
+function calc(p, matLen) {
+  const unitW    = p.finLen + p.tipWidth;
+  const deadZone = p.chuckLeft + p.chuck2jaw + p.safetyLen;
+  const pcsChuck = Math.floor((p.chuckInit - p.safetyLen) / unitW);
+  if (pcsChuck < 1) return null;
+  const machLen  = pcsChuck * unitW;
+  const effMat   = matLen - ((p.matType === 2) ? 15 : 0);
+  if (effMat <= machLen + p.safetyLen) return null;
+  let autoPulls = Math.floor(
+    (effMat - deadZone - machLen - p.tipWidth - p.faceCut)
+    / (machLen + p.tipWidth + p.margin)
+  );
+  if (autoPulls < 0) autoPulls = 0;
+  const consumed  = (machLen + p.tipWidth + p.faceCut)
+                  + autoPulls * (machLen + p.tipWidth + p.margin);
+  const remainRaw = effMat - consumed - deadZone - (p.tipWidth + p.margin);
+  const remainPcs = Math.max(0, Math.floor(remainRaw / unitW));
+  const scrap     = remainPcs > 0
+                  ? Math.max(0, remainRaw - remainPcs * unitW)
+                  : Math.max(0, remainRaw);
+  const total     = pcsChuck * (1 + autoPulls) + remainPcs;
+  return { total, autoPulls, remainPcs, scrap, pcsChuck, machLen, unitW, deadZone };
+}
+
+/* ── Colors ── */
+const COL = {
+  scrap:    0xd63031,
+  jawGrip:  0x7c1a1a,
+  safety:   0x3d0c0c,
+  product:  0x00b894,
+  residual: 0x0984e3,
+  parting:  0xe17055,
+  margin:   0xfdcb6e,
+  sep:      0x636e72,
+  faceCut:  0x6c5ce7,
+  chuck:    0x8899aa,
+  tool:     0xcccccc,
+};
+
+/* ── Three.js Setup ── */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+renderer.setClearColor(0x1a1a2e);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x1a1a2e, 600, 1200);
+const camera = new THREE.PerspectiveCamera(45, 1, 1, 2000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 30;
+controls.maxDistance = 900;
+
+/* Lighting */
+const ambLight = new THREE.AmbientLight(0x404060, 0.8);
+scene.add(ambLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.6);
+dirLight.position.set(100, 200, 150);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(1024, 1024);
+scene.add(dirLight);
+const fillLight = new THREE.DirectionalLight(0x4488ff, 0.4);
+fillLight.position.set(-80, 60, -100);
+scene.add(fillLight);
+
+/* Grid floor */
+const gridHelper = new THREE.GridHelper(800, 40, 0x222244, 0x181830);
+gridHelper.position.y = -20;
+scene.add(gridHelper);
+
+/* ── State ── */
+let barGroup, chuckGroup, toolMesh;
+let segments = [];      // { mesh, type, zStart, len, cycle }
+let animSteps = [];
+let animIdx = 0, animT = 0, playing = false;
+let speedMul = 1;
+let barSpinning = false;
+let result = null;
+
+/* ── Build Bar Segments ── */
+function buildSegments(matLen) {
+  result = calc(P, matLen);
+  if (!result) { setStatus('계산 불가 – 소재 길이를 확인하세요'); return false; }
+  segments = [];
+  const r = result;
+  let z = 0;
+  const push = (len, type, cycle) => {
+    if (len <= 0) return;
+    segments.push({ zStart: z, len, type, cycle: cycle ?? -1 });
+    z += len;
+  };
+
+  // From left: scrap → jawGrip → safety+chuck2jaw → [machining zone] → faceCut
+  push(Math.max(0, r.scrap), 'scrap', -1);
+  push(P.chuckLeft, 'jawGrip', -1);
+  push(P.chuck2jaw + P.safetyLen, 'safety', -1);
+
+  // Remaining pieces (residual)
+  for (let i = 0; i < r.remainPcs; i++) {
+    push(P.finLen, 'residual', -2);
+    push(P.tipWidth, 'parting', -2);
+  }
+  if (r.remainPcs > 0) {
+    push(P.margin, 'margin', -2);
+  }
+
+  // AL cycles (from last to first, since left = farther from face)
+  for (let a = r.autoPulls; a >= 1; a--) {
+    for (let i = 0; i < r.pcsChuck; i++) {
+      push(P.finLen, 'product', a);
+      push(P.tipWidth, 'parting', a);
+    }
+    push(P.margin, 'margin', a);
+  }
+
+  // Initial chuck cycle
+  for (let i = 0; i < r.pcsChuck; i++) {
+    push(P.finLen, 'product', 0);
+    push(P.tipWidth, 'parting', 0);
+  }
+
+  // Face cut
+  push(P.faceCut, 'faceCut', 0);
+
+  return true;
+}
+
+function buildScene(matLen) {
+  // Clear old
+  if (barGroup) scene.remove(barGroup);
+  if (chuckGroup) scene.remove(chuckGroup);
+  if (toolMesh) scene.remove(toolMesh);
+
+  if (!buildSegments(matLen)) return;
+
+  const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
+
+  /* Bar group */
+  barGroup = new THREE.Group();
+  const segGeo = (len) => new THREE.CylinderGeometry(BAR_R, BAR_R, len, 32);
+
+  segments.forEach((seg, i) => {
+    const col = COL[seg.type] || 0xffffff;
+    const mat = new THREE.MeshStandardMaterial({
+      color: col, metalness: 0.4, roughness: 0.5,
+    });
+    const geo = segGeo(seg.len);
+    const mesh = new THREE.Mesh(geo, mat);
+    // Bar along Z: cylinder default is along Y, so rotate
+    mesh.rotation.x = Math.PI / 2;
+    mesh.position.z = seg.zStart + seg.len / 2;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    seg.mesh = mesh;
+    barGroup.add(mesh);
+  });
+
+  // Center bar so chuck is on left
+  barGroup.position.z = -totalLen / 2;
+  scene.add(barGroup);
+
+  /* Chuck */
+  chuckGroup = new THREE.Group();
+  const jawMat = new THREE.MeshStandardMaterial({ color: COL.chuck, metalness: 0.7, roughness: 0.3 });
+
+  // Back plate
+  const plateGeo = new THREE.CylinderGeometry(BAR_R * 2.2, BAR_R * 2.2, 6, 32);
+  const plate = new THREE.Mesh(plateGeo, jawMat);
+  plate.rotation.x = Math.PI / 2;
+  plate.position.z = -4;
+  plate.castShadow = true;
+  chuckGroup.add(plate);
+
+  // 3 Jaws
+  for (let i = 0; i < 3; i++) {
+    const ang = (i * 2 * Math.PI) / 3;
+    const jawGeo = new THREE.BoxGeometry(5, 8, 16);
+    const jaw = new THREE.Mesh(jawGeo, jawMat);
+    jaw.position.set(Math.cos(ang) * (BAR_R + 3), Math.sin(ang) * (BAR_R + 3), 5);
+    jaw.rotation.z = ang;
+    jaw.castShadow = true;
+    chuckGroup.add(jaw);
+  }
+
+  // Outer ring
+  const ringGeo = new THREE.TorusGeometry(BAR_R * 2.5, 2, 16, 32);
+  const ring = new THREE.Mesh(ringGeo, jawMat);
+  ring.position.z = 3;
+  ring.castShadow = true;
+  chuckGroup.add(ring);
+
+  // Position chuck at left end of bar
+  const chuckZ = -totalLen / 2 + P.chuckLeft * 0.5;
+  chuckGroup.position.z = -totalLen / 2 - 1;
+  scene.add(chuckGroup);
+
+  /* Parting Tool */
+  const toolMat = new THREE.MeshStandardMaterial({ color: COL.tool, metalness: 0.8, roughness: 0.2 });
+  const toolGeo = new THREE.BoxGeometry(2, 30, 1.5);
+  toolMesh = new THREE.Mesh(toolGeo, toolMat);
+  toolMesh.position.set(0, BAR_R + 20, totalLen / 2);
+  toolMesh.castShadow = true;
+  toolMesh.visible = false;
+  scene.add(toolMesh);
+
+  /* Camera */
+  camera.position.set(totalLen * 0.4, totalLen * 0.25, totalLen * 0.6);
+  controls.target.set(0, 0, 0);
+  controls.update();
+
+  buildAnimSteps();
+  updateLegend();
+  setStatus(`총 ${result.total}개 | 초기 ${result.pcsChuck}개/척 × ${1 + result.autoPulls}사이클 + 잔여 ${result.remainPcs}개 | 재생 버튼을 눌러주세요`);
+}
+
+/* ── Animation Steps ── */
+function buildAnimSteps() {
+  if (!result) return;
+  animSteps = [];
+  const r = result;
+  const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
+
+  // Helper: find segment world Z center
+  const segWorldZ = (seg) => barGroup.position.z + seg.zStart + seg.len / 2;
+
+  // Collect cycles in machining order: cycle 0 first, then 1..autoPulls, then residual (-2)
+  const cycleOrder = [0];
+  for (let a = 1; a <= r.autoPulls; a++) cycleOrder.push(a);
+  if (r.remainPcs > 0) cycleOrder.push(-2);
+
+  // Face cut first
+  const faceSegs = segments.filter(s => s.type === 'faceCut');
+  if (faceSegs.length > 0) {
+    animSteps.push({ type: 'spinStart', label: '스핀들 회전 시작' });
+    animSteps.push({ type: 'faceCut', seg: faceSegs[0], label: '페이스 커팅' });
+  }
+
+  let isFirst = true;
+  cycleOrder.forEach(cyc => {
+    const cycSegs = segments.filter(s => s.cycle === cyc);
+    const products = cycSegs.filter(s => s.type === 'product' || s.type === 'residual');
+    const partings = cycSegs.filter(s => s.type === 'parting');
+
+    if (!isFirst) {
+      animSteps.push({ type: 'spinStop', label: 'AL 인출 준비' });
+      animSteps.push({
+        type: 'alPull', cycle: cyc,
+        label: cyc === -2 ? '잔여 가공 위치 이동' : `AL ${cyc}차 인출`
+      });
+      animSteps.push({ type: 'spinStart', label: '스핀들 재회전' });
+    }
+
+    // Machine pieces right to left (face side first) for this cycle
+    const sortedProducts = [...products].sort((a, b) => b.zStart - a.zStart);
+    const sortedPartings = [...partings].sort((a, b) => b.zStart - a.zStart);
+
+    sortedProducts.forEach((prod, i) => {
+      const pType = prod.type === 'residual' ? '잔여' : '';
+      animSteps.push({
+        type: 'machine', seg: prod,
+        label: `${pType}제품 가공 (${cyc >= 0 ? cyc + '사이클' : '잔여'} #${i + 1})`
+      });
+      if (sortedPartings[i]) {
+        animSteps.push({
+          type: 'partCut', seg: sortedPartings[i], prodSeg: prod,
+          label: '파팅 절단'
+        });
+      }
+    });
+
+    isFirst = false;
+  });
+
+  animSteps.push({ type: 'spinStop', label: '가공 완료' });
+  animSteps.push({ type: 'done', label: `완료! 총 생산: ${r.total}개` });
+}
+
+/* ── Animation Engine ── */
+let clock = new THREE.Clock();
+
+function updateSpeed() {
+  speedMul = parseFloat(document.getElementById('selSpeed').value);
+}
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? '⏸ 일시정지' : '▶ 재생';
+  if (playing && animIdx >= animSteps.length) resetAnim();
+}
+window.togglePlay = togglePlay;
+
+function resetAnim() {
+  playing = false;
+  animIdx = 0;
+  animT = 0;
+  barSpinning = false;
+  document.getElementById('btnPlay').textContent = '▶ 재생';
+  // Reset segment visuals
+  segments.forEach(seg => {
+    if (seg.mesh) {
+      seg.mesh.material.opacity = 1;
+      seg.mesh.material.transparent = false;
+      seg.mesh.visible = true;
+      seg.mesh.material.emissive = new THREE.Color(0x000000);
+    }
+  });
+  if (toolMesh) toolMesh.visible = false;
+  setStatus('리셋 완료 – 재생 버튼을 눌러주세요');
+}
+window.resetAnim = resetAnim;
+
+function setStatus(txt) {
+  document.getElementById('status').textContent = txt;
+}
+
+/* Easing */
+function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+/* Step processing */
+let stepState = null;
+
+function processStep(dt) {
+  if (animIdx >= animSteps.length) { playing = false; return; }
+  const step = animSteps[animIdx];
+
+  if (!stepState) {
+    // Initialize step
+    stepState = { phase: 0, t: 0 };
+    setStatus(step.label);
+  }
+
+  const spd = speedMul;
+  stepState.t += dt * spd;
+
+  switch (step.type) {
+    case 'spinStart':
+      barSpinning = true;
+      nextStep();
+      break;
+
+    case 'spinStop':
+      barSpinning = false;
+      nextStep();
+      break;
+
+    case 'faceCut': {
+      const dur = 1.5;
+      const p = Math.min(stepState.t / dur, 1);
+      toolMesh.visible = true;
+      const seg = step.seg;
+      const wz = barGroup.position.z + seg.zStart + seg.len / 2;
+      toolMesh.position.z = wz;
+      // Move tool down
+      const startY = BAR_R + 22;
+      const endY = 0;
+      toolMesh.position.y = THREE.MathUtils.lerp(startY, endY, easeInOut(p));
+      if (p >= 1) {
+        seg.mesh.material.emissive = new THREE.Color(0x222222);
+        toolMesh.position.y = startY;
+        toolMesh.visible = false;
+        nextStep();
+      }
+      break;
+    }
+
+    case 'machine': {
+      const dur = 0.8;
+      const p = Math.min(stepState.t / dur, 1);
+      const seg = step.seg;
+      // Glow effect during machining
+      const glow = Math.sin(p * Math.PI) * 0.3;
+      seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.5, 0);
+      if (p >= 1) {
+        seg.mesh.material.emissive = new THREE.Color(0x000000);
+        nextStep();
+      }
+      break;
+    }
+
+    case 'partCut': {
+      const dur = 1.8;
+      const p = Math.min(stepState.t / dur, 1);
+      const seg = step.seg;
+      const wz = barGroup.position.z + seg.zStart + seg.len / 2;
+      toolMesh.visible = true;
+      toolMesh.position.z = wz;
+
+      if (p < 0.6) {
+        // Tool moves in
+        const pp = p / 0.6;
+        const startY = BAR_R + 22;
+        toolMesh.position.y = THREE.MathUtils.lerp(startY, 0, easeInOut(pp));
+        // Parting segment glows
+        seg.mesh.material.emissive = new THREE.Color(0.4 * pp, 0.15 * pp, 0);
+      } else if (p < 0.8) {
+        // Hold at center briefly
+        toolMesh.position.y = 0;
+        seg.mesh.material.emissive = new THREE.Color(0.4, 0.15, 0);
+      } else {
+        // Tool retracts
+        const pp = (p - 0.8) / 0.2;
+        toolMesh.position.y = THREE.MathUtils.lerp(0, BAR_R + 22, easeInOut(pp));
+        seg.mesh.material.emissive = new THREE.Color(0, 0, 0);
+        // Fade the product piece slightly to indicate separation
+        if (step.prodSeg && step.prodSeg.mesh) {
+          step.prodSeg.mesh.material.transparent = true;
+          step.prodSeg.mesh.material.opacity = 0.85;
+        }
+      }
+
+      if (p >= 1) {
+        toolMesh.visible = false;
+        toolMesh.position.y = BAR_R + 22;
+        seg.mesh.material.emissive = new THREE.Color(0, 0, 0);
+        nextStep();
+      }
+      break;
+    }
+
+    case 'alPull': {
+      const dur = 2.0;
+      const p = Math.min(stepState.t / dur, 1);
+      // Visual: brief flash
+      if (p < 0.3) {
+        // flash overlay color
+      }
+      if (p >= 1) {
+        nextStep();
+      }
+      break;
+    }
+
+    case 'done':
+      setStatus(step.label);
+      playing = false;
+      document.getElementById('btnPlay').textContent = '▶ 재생';
+      animIdx = animSteps.length;
+      stepState = null;
+      return;
+
+    default:
+      nextStep();
+  }
+}
+
+function nextStep() {
+  animIdx++;
+  stepState = null;
+}
+
+/* ── Legend ── */
+function updateLegend() {
+  const items = [
+    ['#d63031', '잔재(스크랩)'],
+    ['#7c1a1a', '조 그립'],
+    ['#3d0c0c', '안전구간'],
+    ['#00b894', '제품'],
+    ['#0984e3', '잔여제품'],
+    ['#e17055', '파팅'],
+    ['#fdcb6e', '마진'],
+    ['#6c5ce7', '페이스컷'],
+  ];
+  document.getElementById('legend').innerHTML = items.map(
+    ([c, l]) => `<span><b style="background:${c}"></b>${l}</span>`
+  ).join('');
+}
+
+/* ── Rebuild ── */
+function rebuild() {
+  const ml = parseInt(document.getElementById('inMatLen').value) || 543;
+  P.matLen = ml;
+  resetAnim();
+  buildScene(ml);
+}
+window.rebuild = rebuild;
+
+/* ── Resize ── */
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+/* ── Render Loop ── */
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  controls.update();
+
+  // Bar spinning
+  if (barGroup && barSpinning) {
+    barGroup.rotation.z += dt * 6;
+  }
+
+  // Anim
+  if (playing) {
+    processStep(dt);
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ── Init ── */
+buildScene(P.matLen);
+clock.start();
+animate();
+</script>
+</body>
+</html>
