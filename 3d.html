@@ -378,17 +378,32 @@ function buildScene(matLen) {
   const TOOL_SP = outerR + 8; // 공구간 Y 간격
   const gangMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.2, roughness: 0.8 });
 
+  /* 공구보정(Tool Compensation) 기반 Z 오프셋
+     T001 X-476.210 / Z-505.311
+     T002 X-544.960 / Z-452.500
+     T003 X-822.500 / Z-469.200
+     → T01이 가장 앞(Z가 가장 큰 음수), T02/T03은 뒤로 물러남 */
+  const COMP_Z = { t01: -505.311, t02: -452.500, t03: -469.200 };
+  // T01 기준 상대 Z (양수 = T01보다 뒤로 물러남)
+  const T02_ZOFF = COMP_Z.t01 - COMP_Z.t02; // -52.811 → 52.811mm 뒤
+  const T03_ZOFF = COMP_Z.t01 - COMP_Z.t03; // -36.111 → 36.111mm 뒤
+  // 모델 스케일 (실물 비례 유지하되 시각적 균형 조절)
+  const COMP_SCALE = 0.45;
+  const t02ZOff = Math.abs(T02_ZOFF) * COMP_SCALE; // ~23.8mm
+  const t03ZOff = Math.abs(T03_ZOFF) * COMP_SCALE; // ~16.2mm
+
   /* 실제 KIT60G 갱툴 재현 — 사진 기반 */
   /* 베이스 블록이 메인 몸체, T01홀더가 블록에 통합, T02는 전면 소형 인서트 */
   const toolMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, metalness: 0.15, roughness: 0.75 });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.12, roughness: 0.85 });
 
   // ── 메인 베이스 블록 (큰 사각 블록 — 사진의 구멍 뚫린 본체) ──
-  const blockW = 12, blockH = TOOL_SP * 2 + 10, blockD = 22;
+  // 보정값 반영: T02가 가장 뒤에 있으므로 블록 깊이를 그만큼 확장
+  const blockW = 12, blockH = TOOL_SP * 2 + 10, blockD = 22 + t02ZOff;
   const baseBlock = new THREE.Mesh(
     new THREE.BoxGeometry(blockW, blockH, blockD), toolMat
   );
-  baseBlock.position.set(0, TOOL_SP, blockD / 2 + 2); // 블록 중심 (+Z쪽, 뒤)
+  baseBlock.position.set(0, TOOL_SP, blockD / 2 - 2); // 블록 중심 (T01 홀더 전면 기준)
   gangGroup.add(baseBlock);
 
   // 볼트구멍 장식 (사진에 보이는 4개 원형)
@@ -396,10 +411,10 @@ function buildScene(matLen) {
   [[-3, TOOL_SP + 4], [3, TOOL_SP + 4], [-3, TOOL_SP - 4], [3, TOOL_SP - 4]].forEach(([bx, by]) => {
     const bolt = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, blockW + 0.2, 8), boltMat);
     bolt.rotation.z = Math.PI / 2;
-    bolt.position.set(bx * 0.01, by, blockD / 2 + 2);
+    bolt.position.set(bx * 0.01, by, blockD / 2 - 2);
     // 전면에 원형 표시
     const boltFace = new THREE.Mesh(new THREE.CircleGeometry(1.2, 8), boltMat);
-    boltFace.position.set(0, by, 2);
+    boltFace.position.set(0, by, -2);
     boltFace.rotation.y = Math.PI;
     gangGroup.add(boltFace);
   });
@@ -451,7 +466,7 @@ function buildScene(matLen) {
   );
   tBlade.position.z = -2.5; // 홀더 전면에서 약간 앞
   t02Sub.add(tBlade);
-  t02Sub.position.set(0, TOOL_SP, 0);
+  t02Sub.position.set(0, TOOL_SP, t02ZOff); // 보정값 기반 Z 후퇴
   gangGroup.add(t02Sub);
   toolMesh = tBlade; // 이펙트 참조
 
@@ -489,7 +504,7 @@ function buildScene(matLen) {
   const alFingerBot = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), fingerMat);
   alFingerBot.position.set(0, -(outerR + 2), -armLen + 2);
   t03Sub.add(alFingerBot);
-  t03Sub.position.set(0, TOOL_SP * 2, 0);
+  t03Sub.position.set(0, TOOL_SP * 2, t03ZOff); // 보정값 기반 Z 후퇴
   gangGroup.add(t03Sub);
   alGripperMesh = t03Sub;
 
@@ -497,6 +512,13 @@ function buildScene(matLen) {
   const t02OpenY = outerR + 1.5;
   const t02CutY = innerR > 0 ? -(innerR + 2) : -2;
   const t03FingerOff = armLen - 2; // 핑거팁 localZ = -armLen+2, 그래서 오프셋 = armLen-2
+  // 각 공구 팁의 gang-local Z 좌표 (보정값 반영)
+  // T01 팁: sub.z(0) - bbTipOffset = -bbTipOffset (가장 앞)
+  // T02 칼날: sub.z(t02ZOff) - 2.5 = t02ZOff - 2.5 (뒤쪽)
+  // T03 핑거: sub.z(t03ZOff) - t03FingerOff (뒤쪽)
+  const t01TipGangZ = -bbTipOffset;
+  const t02TipGangZ = t02ZOff - 2.5;
+  const t03TipGangZ = t03ZOff - t03FingerOff;
   gangGroup.userData = {
     toolSpacing: TOOL_SP,
     t01LocalY: 0,           // T01 맨 아래
@@ -504,13 +526,17 @@ function buildScene(matLen) {
     t03LocalY: TOOL_SP * 2, // T03 맨 위
     t02OpenY, t02CutY,
     t01TipOffset: bbTipOffset,
+    t01TipGangZ,            // T01 팁 gang-local Z
+    t02TipGangZ,            // T02 칼날 gang-local Z
+    t03TipGangZ,            // T03 핑거 gang-local Z
     t03FingerOffset: t03FingerOff,
     fingerTop: alFingerTop,
     fingerBot: alFingerBot,
   };
 
   // 초기 위치: T02(중간) 기준 대기 → gangY = t02OpenY - t02LocalY
-  gangRestZ = stickoutLen + 15;
+  // Z 대기위치: 가장 앞으로 돌출된 T01 팁이 봉재 끝에서 충분히 떨어지도록
+  gangRestZ = stickoutLen + 15 + Math.abs(t01TipGangZ);
   gangGroup.position.set(0, t02OpenY - TOOL_SP, gangRestZ);
   scene.add(gangGroup);
 
@@ -751,8 +777,11 @@ function processStep(dt) {
       const p = Math.min(stepState.t / dur, 1);
       const faceSeg = step.seg;
       const partSeg = step.partSeg;
-      // 갱 Z를 파팅 세그먼트 위치로
-      if (partSeg) gangGroup.position.z = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
+      // 갱 Z: T02 칼날이 파팅 세그먼트에 오도록 (보정 오프셋 반영)
+      if (partSeg) {
+        const segCenterZ = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
+        gangGroup.position.z = segCenterZ - gangGroup.userData.t02TipGangZ;
+      }
 
       animatePartingBlade(p, 0.4);
       if (p < 0.55) {
@@ -825,7 +854,9 @@ function processStep(dt) {
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
       const prodSeg = step.prodSeg;
-      gangGroup.position.z = barGroup.position.z + seg.zStart + seg.len / 2;
+      // T02 칼날이 파팅 세그먼트에 오도록 (보정 오프셋 반영)
+      const partSegZ = barGroup.position.z + seg.zStart + seg.len / 2;
+      gangGroup.position.z = partSegZ - gangGroup.userData.t02TipGangZ;
 
       animatePartingBlade(p, 0.35);
       if (p < 0.5) {
@@ -856,7 +887,9 @@ function processStep(dt) {
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
       const marginSeg = step.marginSeg;
-      gangGroup.position.z = barGroup.position.z + seg.zStart + seg.len / 2;
+      // T02 칼날이 파팅 세그먼트에 오도록 (보정 오프셋 반영)
+      const alPartSegZ = barGroup.position.z + seg.zStart + seg.len / 2;
+      gangGroup.position.z = alPartSegZ - gangGroup.userData.t02TipGangZ;
 
       animatePartingBlade(p, 0.35);
       if (p < 0.5) {
@@ -896,9 +929,11 @@ function processStep(dt) {
         const visRightLocal = visSegs.length > 0
           ? Math.max(...visSegs.map(s => s.zStart + s.len)) : 0;
         const barVisRightZ = stepState.startBarZ + visRightLocal;
-        // 갱 Z: T03 핑거(localZ=-fOff)가 바 끝에 오려면 gangZ = barEnd + fOff
-        stepState.gripperGrabZ = barVisRightZ + t03FingerOffset;
-        stepState.gripperRestZ = barVisRightZ + t03FingerOffset + 5;
+        // 갱 Z: T03 핑거가 바 끝에 오도록 (보정 오프셋 반영)
+        // T03 핑거 gang-local Z = t03TipGangZ → gangZ = barEnd - t03TipGangZ
+        const { t03TipGangZ } = gangGroup.userData;
+        stepState.gripperGrabZ = barVisRightZ - t03TipGangZ;
+        stepState.gripperRestZ = barVisRightZ - t03TipGangZ + 5;
         // 갱 Y: T03(localY=t03LocalY)이 중심(Y=0)에 오려면 gangY = -t03LocalY
         stepState.gangYForT03 = -t03LocalY;
         stepState.phase = 1;
