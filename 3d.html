@@ -206,7 +206,7 @@ gridHelper.position.y = -20;
 scene.add(gridHelper);
 
 /* ── State ── */
-let barGroup, chuckGroup, toolMesh, boringBarMesh;
+let barGroup, chuckGroup, toolMesh, boringBarMesh, alGripperMesh;
 let segments = [];      // { mesh, type, zStart, len, cycle }
 let animSteps = [];
 let animIdx = 0, animT = 0, playing = false;
@@ -275,6 +275,7 @@ function buildScene(matLen) {
   if (chuckGroup) scene.remove(chuckGroup);
   if (toolMesh) scene.remove(toolMesh);
   if (boringBarMesh) scene.remove(boringBarMesh);
+  if (alGripperMesh) scene.remove(alGripperMesh);
 
   if (!buildSegments(matLen)) return;
 
@@ -371,58 +372,99 @@ function buildScene(matLen) {
   chuckGroup.position.z = initialChuckZ;
   scene.add(chuckGroup);
 
-  /* Parting Tool — 수직 절단바이트 (위에서 외경 표면까지 하강) */
+  /* ── 절단바이트: 위아래 집게(jaw) 형태 ── */
   const toolGroup = new THREE.Group();
-  const toolMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.15, roughness: 0.8 });
-  // 홀더 (상단 사각 블록)
-  const holderGeo = new THREE.BoxGeometry(8, 14, 5);
-  const holder = new THREE.Mesh(holderGeo, toolMat);
-  holder.position.y = 10;
-  holder.castShadow = true;
-  toolGroup.add(holder);
-  // 블레이드 (얇은 직사각)
-  const bladeMat = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.2, roughness: 0.7 });
-  const bladeGeo = new THREE.BoxGeometry(1.5, 20, 3);
-  const blade = new THREE.Mesh(bladeGeo, bladeMat);
-  blade.castShadow = true;
-  toolGroup.add(blade);
-  // 인서트 팁 (하단)
-  const insertMat = new THREE.MeshStandardMaterial({ color: 0xd4a030, metalness: 0.1, roughness: 0.7 });
-  const insertGeo = new THREE.BoxGeometry(2, 3, 3.5);
-  const insert = new THREE.Mesh(insertGeo, insertMat);
-  insert.position.y = -10;
-  toolGroup.add(insert);
-  toolGroup.position.set(0, outerR + 20, stickoutLen / 2);
+  const tMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.12, roughness: 0.85 });
+  const tMatDark = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.1, roughness: 0.9 });
+  // 상부 조(jaw) — 큰 사각블록 + 하단 돌출부
+  const tjTop = new THREE.Group();
+  const tjTopBody = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 6), tMat);
+  tjTopBody.position.y = 8;
+  tjTop.add(tjTopBody);
+  const tjTopJaw = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 4), tMatDark);
+  tjTopJaw.position.y = 2;
+  tjTop.add(tjTopJaw);
+  // 인서트 (절삭날)
+  const tjInsert = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3, 3),
+    new THREE.MeshStandardMaterial({ color: 0xc0a030, metalness: 0.08, roughness: 0.75 }));
+  tjInsert.position.y = -1;
+  tjTop.add(tjInsert);
+  toolGroup.add(tjTop);
+  // 하부 조(jaw) — 아래쪽 집게
+  const tjBot = new THREE.Group();
+  const tjBotBody = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 6), tMat);
+  tjBotBody.position.y = -7;
+  tjBot.add(tjBotBody);
+  const tjBotJaw = new THREE.Mesh(new THREE.BoxGeometry(6, 5, 4), tMatDark);
+  tjBotJaw.position.y = -2;
+  tjBot.add(tjBotJaw);
+  const tjBotInsert = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 3),
+    new THREE.MeshStandardMaterial({ color: 0xc0a030, metalness: 0.08, roughness: 0.75 }));
+  tjBotInsert.position.y = 1;
+  tjBot.add(tjBotInsert);
+  toolGroup.add(tjBot);
+  // 집게가 열린 상태로 대기 (상부/하부 jaw 간격)
+  toolGroup.userData = { topJaw: tjTop, botJaw: tjBot, openGap: outerR + 8 };
+  tjTop.position.y = outerR + 8;
+  tjBot.position.y = -(outerR + 8);
+  toolGroup.position.set(0, 0, stickoutLen / 2);
   toolGroup.visible = false;
   toolMesh = toolGroup;
   scene.add(toolMesh);
 
-  /* Boring Bar — 외경 위쪽에 배치, Z축 방향 진입 (칼날이 외경 상단에 맞닿아 가공) */
+  /* ── 보링바: 사각홀더 + 원통바 + 챔퍼팁 ── */
   const bbGroup = new THREE.Group();
-  const bbMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.15, roughness: 0.8 });
-  // 홀더 (사각 블록)
-  const bbHolderGeo = new THREE.BoxGeometry(8, 8, 12);
-  const bbHolder = new THREE.Mesh(bbHolderGeo, bbMat);
-  bbHolder.position.z = -10;
-  bbHolder.castShadow = true;
-  bbGroup.add(bbHolder);
-  // 원통형 보링바 본체 (Z축 방향)
-  const bbBarGeo = new THREE.CylinderGeometry(1.8, 1.8, P.finLen * 2, 16);
-  const bbBar = new THREE.Mesh(bbBarGeo, bbMat);
+  const bbMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.12, roughness: 0.85 });
+  // 대형 사각 홀더 블록
+  const bbH1 = new THREE.Mesh(new THREE.BoxGeometry(14, 14, 18), bbMat);
+  bbH1.position.z = -16;
+  bbGroup.add(bbH1);
+  // 중간 사각 블록 (단차)
+  const bbH2 = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.1, roughness: 0.85 }));
+  bbH2.position.z = -4;
+  bbGroup.add(bbH2);
+  // 원통형 보링바 본체
+  const bbBarLen = P.finLen * 2.5;
+  const bbBarGeo = new THREE.CylinderGeometry(2.5, 2.5, bbBarLen, 16);
+  const bbBar = new THREE.Mesh(bbBarGeo, new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.15, roughness: 0.8 }));
   bbBar.rotation.x = Math.PI / 2;
-  bbBar.castShadow = true;
+  bbBar.position.z = bbBarLen / 2;
   bbGroup.add(bbBar);
-  // 선단 인서트 (앞쪽 팁)
-  const bbTipMat = new THREE.MeshStandardMaterial({ color: 0xd4a030, metalness: 0.1, roughness: 0.7 });
-  const bbTipGeo = new THREE.BoxGeometry(2.5, 2.5, 2);
-  const bbTip = new THREE.Mesh(bbTipGeo, bbTipMat);
-  bbTip.position.z = P.finLen;
+  // 챔퍼 팁 (끝단 깎인 형태)
+  const bbTipGeo = new THREE.CylinderGeometry(1, 2.5, 3, 16);
+  const bbTip = new THREE.Mesh(bbTipGeo,
+    new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.15, roughness: 0.8 }));
+  bbTip.rotation.x = Math.PI / 2;
+  bbTip.position.z = bbBarLen + 1.5;
   bbGroup.add(bbTip);
-  // 외경 상단에 배치 (칼날이 외경 표면에 닿는 위치)
-  bbGroup.position.set(0, outerR - 1, stickoutLen + P.finLen * 2.5);
+  // 외경 상단에 배치
+  bbGroup.position.set(0, outerR - 2, stickoutLen + bbBarLen);
   bbGroup.visible = false;
   boringBarMesh = bbGroup;
   scene.add(boringBarMesh);
+
+  /* ── AL 그리퍼 (오토링크: 바를 잡아 당기는 장치) ── */
+  const alGroup = new THREE.Group();
+  const alMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, metalness: 0.1, roughness: 0.85 });
+  // 본체 (사각)
+  const alBody = new THREE.Mesh(new THREE.BoxGeometry(outerR * 2.5, outerR * 2.5, 5), alMat);
+  alBody.position.z = -4;
+  alGroup.add(alBody);
+  // 상부 핑거
+  const fingerMat = new THREE.MeshStandardMaterial({ color: 0x5a5a5a, metalness: 0.1, roughness: 0.8 });
+  const alFingerTop = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 8), fingerMat);
+  alFingerTop.position.set(0, outerR + 2, 2);
+  alGroup.add(alFingerTop);
+  // 하부 핑거
+  const alFingerBot = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 8), fingerMat);
+  alFingerBot.position.set(0, -(outerR + 2), 2);
+  alGroup.add(alFingerBot);
+  alGroup.userData = { fingerTop: alFingerTop, fingerBot: alFingerBot };
+  alGroup.position.set(0, 0, stickoutLen + 30);
+  alGroup.visible = false;
+  alGripperMesh = alGroup;
+  scene.add(alGripperMesh);
 
   /* Camera — 가공 영역(척 우측) 포커스 */
   camera.position.set(stickoutLen * 0.6, stickoutLen * 0.4, stickoutLen * 1.0);
@@ -574,8 +616,9 @@ function resetAnim() {
   // 떨어진 제품 제거
   fallenPieces.forEach(m => scene.remove(m));
   fallenPieces = [];
-  if (toolMesh) toolMesh.visible = false;
+  if (toolMesh) { toolMesh.visible = false; resetPartingJaws(); }
   if (boringBarMesh) boringBarMesh.visible = false;
+  if (alGripperMesh) { alGripperMesh.visible = false; resetGripperFingers(); }
   // barGroup 위치 초기화 (척은 항상 z=0 고정)
   if (barGroup) {
     barGroup.position.z = initialBarZ;
@@ -591,6 +634,43 @@ function setStatus(txt) {
 
 /* Easing */
 function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+/* 절단바이트 집게 애니메이션 헬퍼 */
+function animatePartingJaws(p, closePhaseEnd) {
+  if (!toolMesh.userData) return;
+  const { topJaw, botJaw, openGap } = toolMesh.userData;
+  const closeY = curOuterR * 0.3; // 집게가 외경 가까이 닫히는 위치
+  if (p < closePhaseEnd) {
+    // 집게 닫힘
+    const pp = p / closePhaseEnd;
+    const y = THREE.MathUtils.lerp(openGap, closeY, easeInOut(pp));
+    topJaw.position.y = y;
+    botJaw.position.y = -y;
+  } else if (p < closePhaseEnd + 0.15) {
+    topJaw.position.y = closeY;
+    botJaw.position.y = -closeY;
+  } else {
+    // 집게 열림
+    const pp = Math.min((p - closePhaseEnd - 0.15) / 0.2, 1);
+    const y = THREE.MathUtils.lerp(closeY, openGap, easeInOut(pp));
+    topJaw.position.y = y;
+    botJaw.position.y = -y;
+  }
+}
+function resetPartingJaws() {
+  if (!toolMesh || !toolMesh.userData) return;
+  const { topJaw, botJaw, openGap } = toolMesh.userData;
+  topJaw.position.y = openGap;
+  botJaw.position.y = -openGap;
+}
+
+/* AL 그리퍼 핑거 리셋 */
+function resetGripperFingers() {
+  if (!alGripperMesh || !alGripperMesh.userData) return;
+  const { fingerTop, fingerBot } = alGripperMesh.userData;
+  fingerTop.position.y = curOuterR + 2;
+  fingerBot.position.y = -(curOuterR + 2);
+}
 
 /* Step processing */
 let stepState = null;
@@ -620,51 +700,35 @@ function processStep(dt) {
       break;
 
     case 'facePart': {
-      // 페이스컷 + 파팅 동시 절단: 파팅이 잘리면서 페이스컷+파팅 부분 탈락
       const dur = 2.5;
       const p = Math.min(stepState.t / dur, 1);
       const faceSeg = step.seg;
       const partSeg = step.partSeg;
       toolMesh.visible = true;
+      if (partSeg) toolMesh.position.z = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
 
-      // 파팅 위치에서 툴 진입
-      if (partSeg) {
-        const wz = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
-        toolMesh.position.z = wz;
-      }
-      const startY = curOuterR + 22;
-      const cutY = curOuterR + 10; // 인서트 팁(-10)이 외경 표면에 닿는 위치
-
-      if (p < 0.4) {
-        const pp = p / 0.4;
-        toolMesh.position.y = THREE.MathUtils.lerp(startY, cutY, easeInOut(pp));
-        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.5 * pp, 0.2 * pp, 0);
-        if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(0.4 * pp, 0.15 * pp, 0);
-      } else if (p < 0.55) {
-        toolMesh.position.y = cutY;
-        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.5, 0.2, 0);
+      // 집게 닫힘(0~0.4) → 유지(0.4~0.55) → 열림(0.55~0.75) → 탈락(0.75~1)
+      animatePartingJaws(p, 0.4);
+      if (p < 0.55) {
+        const glow = Math.min(p / 0.4, 1) * 0.4;
+        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(glow, glow * 0.3, 0);
+        if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(glow * 0.8, glow * 0.2, 0);
       } else if (p < 0.75) {
         const pp = (p - 0.55) / 0.2;
-        toolMesh.position.y = THREE.MathUtils.lerp(cutY, startY, easeInOut(pp));
-        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.5 * (1-pp), 0.2 * (1-pp), 0);
+        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.4*(1-pp), 0.12*(1-pp), 0);
       } else {
-        // 페이스컷 + 파팅 조각이 아래로 떨어짐
-        const pp = (p - 0.75) / 0.25;
         toolMesh.visible = false;
-        if (faceSeg && faceSeg.mesh) {
-          faceSeg.mesh.position.y = -easeInOut(pp) * 35;
-          faceSeg.mesh.material.transparent = true;
-          faceSeg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
-        }
-        if (partSeg && partSeg.mesh) {
-          partSeg.mesh.position.y = -easeInOut(pp) * 35;
-          partSeg.mesh.material.transparent = true;
-          partSeg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
-        }
+        const pp = (p - 0.75) / 0.25;
+        [faceSeg, partSeg].forEach(s => {
+          if (s && s.mesh) {
+            s.mesh.position.y = -easeInOut(pp) * 35;
+            s.mesh.material.transparent = true;
+            s.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
+          }
+        });
       }
       if (p >= 1) {
-        toolMesh.visible = false;
-        toolMesh.position.y = startY;
+        toolMesh.visible = false; resetPartingJaws();
         if (faceSeg && faceSeg.mesh) { faceSeg.mesh.visible = false; faceSeg._fallen = true; }
         if (partSeg && partSeg.mesh) { partSeg.mesh.visible = false; partSeg._fallen = true; }
         nextStep();
@@ -717,104 +781,67 @@ function processStep(dt) {
     }
 
     case 'partCut': {
-      // 파팅: 툴 진입 → 절단 → 후퇴 → 제품이 아래로 떨어짐
       const dur = 2.2;
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
       const prodSeg = step.prodSeg;
-      const wz = barGroup.position.z + seg.zStart + seg.len / 2;
       toolMesh.visible = true;
-      toolMesh.position.z = wz;
-      const startY = curOuterR + 22;
-      const cutY = curOuterR + 10;
+      toolMesh.position.z = barGroup.position.z + seg.zStart + seg.len / 2;
 
-      if (p < 0.35) {
-        const pp = p / 0.35;
-        toolMesh.position.y = THREE.MathUtils.lerp(startY, cutY, easeInOut(pp));
-        seg.mesh.material.emissive = new THREE.Color(0.5 * pp, 0.2 * pp, 0);
-      } else if (p < 0.5) {
-        toolMesh.position.y = cutY;
-        seg.mesh.material.emissive = new THREE.Color(0.5, 0.2, 0);
+      animatePartingJaws(p, 0.35);
+      if (p < 0.5) {
+        const glow = Math.min(p / 0.35, 1) * 0.4;
+        seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.3, 0);
       } else if (p < 0.65) {
         const pp = (p - 0.5) / 0.15;
-        toolMesh.position.y = THREE.MathUtils.lerp(cutY, startY, easeInOut(pp));
-        seg.mesh.material.emissive = new THREE.Color(0.5 * (1-pp), 0.2 * (1-pp), 0);
+        seg.mesh.material.emissive = new THREE.Color(0.4*(1-pp), 0.12*(1-pp), 0);
       } else {
-        // 제품 + 파팅 모두 아래로 떨어짐
         toolMesh.visible = false;
         const pp = (p - 0.65) / 0.35;
-        if (prodSeg && prodSeg.mesh && !prodSeg._fallen) {
-          prodSeg.mesh.position.y = -easeInOut(pp) * 40;
-          prodSeg.mesh.position.z += pp * 0.1;
-          prodSeg.mesh.material.transparent = true;
-          prodSeg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
-        }
-        if (seg && seg.mesh && !seg._fallen) {
-          seg.mesh.position.y = -easeInOut(pp) * 40;
-          seg.mesh.material.transparent = true;
-          seg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
-        }
+        [prodSeg, seg].forEach(s => {
+          if (s && s.mesh && !s._fallen) {
+            s.mesh.position.y = -easeInOut(pp) * 40;
+            s.mesh.material.transparent = true;
+            s.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
+          }
+        });
       }
-
       if (p >= 1) {
-        toolMesh.visible = false;
-        toolMesh.position.y = startY;
-        seg.mesh.material.emissive = new THREE.Color(0, 0, 0);
-        // 제품 + 파팅 숨기기
-        if (prodSeg && prodSeg.mesh) {
-          prodSeg.mesh.visible = false;
-          prodSeg._fallen = true;
-        }
-        if (seg && seg.mesh) {
-          seg.mesh.visible = false;
-          seg._fallen = true;
-        }
+        toolMesh.visible = false; resetPartingJaws();
+        [prodSeg, seg].forEach(s => { if (s && s.mesh) { s.mesh.visible = false; s._fallen = true; } });
         nextStep();
       }
       break;
     }
 
     case 'alPartCut': {
-      // AL 후 파팅 절단: 파팅 + 마진 동시 탈락
       const dur = 2.2;
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
       const marginSeg = step.marginSeg;
-      const wz = barGroup.position.z + seg.zStart + seg.len / 2;
       toolMesh.visible = true;
-      toolMesh.position.z = wz;
-      const startY = curOuterR + 22;
-      const cutY = curOuterR + 10;
+      toolMesh.position.z = barGroup.position.z + seg.zStart + seg.len / 2;
 
-      if (p < 0.35) {
-        const pp = p / 0.35;
-        toolMesh.position.y = THREE.MathUtils.lerp(startY, cutY, easeInOut(pp));
-        seg.mesh.material.emissive = new THREE.Color(0.5 * pp, 0.2 * pp, 0);
-      } else if (p < 0.5) {
-        toolMesh.position.y = cutY;
+      animatePartingJaws(p, 0.35);
+      if (p < 0.5) {
+        const glow = Math.min(p / 0.35, 1) * 0.4;
+        seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.3, 0);
       } else if (p < 0.65) {
         const pp = (p - 0.5) / 0.15;
-        toolMesh.position.y = THREE.MathUtils.lerp(cutY, startY, easeInOut(pp));
-        seg.mesh.material.emissive = new THREE.Color(0.5 * (1-pp), 0.2 * (1-pp), 0);
+        seg.mesh.material.emissive = new THREE.Color(0.4*(1-pp), 0.12*(1-pp), 0);
       } else {
-        // 파팅 + 마진 동시 탈락
         toolMesh.visible = false;
         const pp = (p - 0.65) / 0.35;
-        if (seg.mesh && !seg._fallen) {
-          seg.mesh.position.y = -easeInOut(pp) * 40;
-          seg.mesh.material.transparent = true;
-          seg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
-        }
-        if (marginSeg && marginSeg.mesh && !marginSeg._fallen) {
-          marginSeg.mesh.position.y = -easeInOut(pp) * 40;
-          marginSeg.mesh.material.transparent = true;
-          marginSeg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
-        }
+        [seg, marginSeg].forEach(s => {
+          if (s && s.mesh && !s._fallen) {
+            s.mesh.position.y = -easeInOut(pp) * 40;
+            s.mesh.material.transparent = true;
+            s.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
+          }
+        });
       }
-
       if (p >= 1) {
-        toolMesh.visible = false;
-        toolMesh.position.y = startY;
+        toolMesh.visible = false; resetPartingJaws();
         if (seg.mesh) { seg.mesh.visible = false; seg._fallen = true; }
         if (marginSeg && marginSeg.mesh) { marginSeg.mesh.visible = false; marginSeg._fallen = true; }
         nextStep();
@@ -823,31 +850,73 @@ function processStep(dt) {
     }
 
     case 'alPull': {
-      // 오토링크 인출: 봉재만 +Z 방향으로 전진 (척은 고정)
-      const dur = 2.5;
+      // 오토링크 인출: 그리퍼가 접근→잡기→당기기→놓기→후퇴
+      const dur = 4.0;
       const p = Math.min(stepState.t / dur, 1);
       const pullDist = step.pullDist || (result.machLen + P.tipWidth + P.margin);
 
-      // 스텝 시작 시 현재 위치 기록
       if (stepState.phase === 0) {
         stepState.startBarZ = barGroup ? barGroup.position.z : 0;
+        // 바 우측 끝 위치 (그리퍼 접근 목표)
+        const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
+        const barRightZ = stepState.startBarZ + totalLen;
+        stepState.barRightZ = barRightZ;
+        // 그리퍼 대기 위치 (바 오른쪽 바깥)
+        stepState.gripperRestZ = barRightZ + 35;
+        // 그리퍼 잡기 위치 (바 끝에 핑거가 닿는 위치)
+        stepState.gripperGrabZ = barRightZ - 4;
         stepState.phase = 1;
       }
 
-      if (p < 0.15) {
-        // 척 풀림 대기
-      } else if (p < 0.85) {
-        // 봉재만 전진 (척은 고정)
-        const pp = (p - 0.15) / 0.7;
+      const { fingerTop, fingerBot } = alGripperMesh.userData;
+      const openY = curOuterR + 2;
+      const closeY = curOuterR * 0.4;
+
+      alGripperMesh.visible = true;
+
+      if (p < 0.12) {
+        // Phase 1: 그리퍼 접근 (대기 → 바 끝)
+        const pp = p / 0.12;
+        alGripperMesh.position.z = THREE.MathUtils.lerp(stepState.gripperRestZ, stepState.gripperGrabZ, easeInOut(pp));
+        fingerTop.position.y = openY;
+        fingerBot.position.y = -openY;
+      } else if (p < 0.22) {
+        // Phase 2: 핑거 닫힘 (잡기)
+        alGripperMesh.position.z = stepState.gripperGrabZ;
+        const pp = (p - 0.12) / 0.1;
+        const y = THREE.MathUtils.lerp(openY, closeY, easeInOut(pp));
+        fingerTop.position.y = y;
+        fingerBot.position.y = -y;
+      } else if (p < 0.72) {
+        // Phase 3: 봉재 당기기 (그리퍼 + 봉재 동시 이동)
+        fingerTop.position.y = closeY;
+        fingerBot.position.y = -closeY;
+        const pp = (p - 0.22) / 0.5;
         const offset = easeInOut(pp) * pullDist;
         if (barGroup) barGroup.position.z = stepState.startBarZ + offset;
+        alGripperMesh.position.z = stepState.gripperGrabZ + offset;
+      } else if (p < 0.82) {
+        // Phase 4: 핑거 열림 (놓기)
+        if (barGroup) barGroup.position.z = stepState.startBarZ + pullDist;
+        alGripperMesh.position.z = stepState.gripperGrabZ + pullDist;
+        const pp = (p - 0.72) / 0.1;
+        const y = THREE.MathUtils.lerp(closeY, openY, easeInOut(pp));
+        fingerTop.position.y = y;
+        fingerBot.position.y = -y;
       } else {
-        // 척 재고정
-        const finalOffset = pullDist;
-        if (barGroup) barGroup.position.z = stepState.startBarZ + finalOffset;
+        // Phase 5: 그리퍼 후퇴
+        if (barGroup) barGroup.position.z = stepState.startBarZ + pullDist;
+        fingerTop.position.y = openY;
+        fingerBot.position.y = -openY;
+        const pp = (p - 0.82) / 0.18;
+        alGripperMesh.position.z = THREE.MathUtils.lerp(
+          stepState.gripperGrabZ + pullDist, stepState.gripperRestZ + pullDist, easeInOut(pp)
+        );
       }
 
       if (p >= 1) {
+        alGripperMesh.visible = false;
+        resetGripperFingers();
         nextStep();
       }
       break;
