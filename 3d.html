@@ -77,7 +77,7 @@ canvas { display: block; }
   <h1>KIT60G 3D 가공 시뮬레이션 <a href="index.html">← 계산기</a></h1>
   <div class="toolbar">
     <label>소재길이</label>
-    <input id="inMatLen" type="number" value="543" step="1">
+    <input id="inMatLen" type="number" value="543" step="1" data-sync="matLen">
     <label>mm</label>
     <button class="btn btn-red" onclick="rebuild()">재생성</button>
     <span style="width:8px"></span>
@@ -101,18 +101,22 @@ canvas { display: block; }
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-/* ── Parameters ── */
+/* ── Parameters (localStorage에서 로드, 없으면 기본값) ── */
+const _saved = (() => {
+  try { return JSON.parse(localStorage.getItem('kit60g_params')) || {}; } catch { return {}; }
+})();
 const P = {
-  finLen: 8.0,
-  tipWidth: 2.0,
-  chuckInit: 75,
-  safetyLen: 12,
-  chuckLeft: 15,
-  chuck2jaw: 1.03,
-  faceCut: 1,
-  margin: 0.2,
-  matType: 3,
-  matLen: 543
+  finLen:    _saved.finLen    ?? 8.0,
+  tipWidth:  _saved.tipWidth  ?? 2.0,
+  chuckInit: _saved.chuckInit ?? 75,
+  safetyLen: _saved.safetyLen ?? 12,
+  chuckLeft: _saved.chuckLeft ?? 15,
+  chuck2jaw: _saved.chuck2jaw ?? 1.03,
+  faceCut:   _saved.faceCut   ?? 1,
+  margin:    _saved.margin    ?? 0.2,
+  matType:   _saved.matType   ?? 3,
+  matLen:    _saved.matLen    ?? 543,
+  residual:  _saved.residual  ?? 0
 };
 const BAR_R = 8;
 
@@ -744,6 +748,7 @@ function animate() {
 }
 
 /* ── Init ── */
+document.getElementById('inMatLen').value = P.matLen;
 buildScene(P.matLen);
 clock.start();
 animate();

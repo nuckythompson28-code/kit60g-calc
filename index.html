@@ -110,7 +110,7 @@ h1 {
   <button class="btn" onclick="switchTab('table')">범위표</button>
   <button class="btn" onclick="switchTab('deadzone')">데드존</button>
   <button class="btn" onclick="switchTab('viz')">시각화</button>
-  <button class="btn" onclick="window.location.href='3d.html'" style="background:#6c5ce7">3D</button>
+  <button class="btn" onclick="goTo3D()" style="background:#6c5ce7">3D</button>
 </div>
 
 <!-- 설정 탭 -->
@@ -206,6 +206,14 @@ h1 {
 
 <script>
 'use strict';
+
+/* ── 3D 이동 ── */
+function goTo3D() {
+  const p = getP();
+  const matLen = parseFloat(document.getElementById('qMatLen').value) || p.matLen || 543;
+  localStorage.setItem('kit60g_params', JSON.stringify({ ...p, matLen }));
+  window.location.href = '3d.html';
+}
 
 /* ── 파라미터 ── */
 let G = {};
