@@ -428,24 +428,26 @@ function buildScene(matLen) {
   );
   bbHolderFront.position.z = -1; // 블록 전면에서 약간 앞
   t01Sub.add(bbHolderFront);
-  // 보링바 본체 (앞으로 길게 돌출)
-  const bbBarLen = P.finLen + 3;
+  // 보링바 본체 (돌출 길이 조정 — 실제 비례)
+  const bbBarLen = P.finLen;
+  const bbBarStart = 2; // 홀더 전면에서 바 시작까지 간격
   const bbBar = new THREE.Mesh(
     new THREE.CylinderGeometry(2.5, 2.5, bbBarLen, 16),
     new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.15, roughness: 0.8 })
   );
   bbBar.rotation.x = Math.PI / 2;
-  bbBar.position.z = -4 - bbBarLen / 2; // 홀더 앞에서 시작
+  bbBar.position.z = -bbBarStart - bbBarLen / 2;
   t01Sub.add(bbBar);
   // 챔퍼 팁
+  const bbTipLen = 2;
   const bbTip = new THREE.Mesh(
-    new THREE.CylinderGeometry(1, 2.5, 3, 16),
+    new THREE.CylinderGeometry(1, 2.5, bbTipLen, 16),
     new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.15, roughness: 0.8 })
   );
   bbTip.rotation.x = Math.PI / 2;
-  bbTip.position.z = -4 - bbBarLen - 1.5;
+  bbTip.position.z = -bbBarStart - bbBarLen - bbTipLen / 2;
   t01Sub.add(bbTip);
-  const bbTipOffset = 4 + bbBarLen + 1.5; // 원점(홀더)에서 팁까지 거리
+  const bbTipOffset = bbBarStart + bbBarLen + bbTipLen / 2; // 원점에서 팁까지 거리
   t01Sub.position.set(0, 0, 0);
   gangGroup.add(t01Sub);
   boringBarMesh = t01Sub;
@@ -747,13 +749,29 @@ function resetGripperFingers() {
 /* Step processing */
 let stepState = null;
 
+/* 갱 이동 트랜짓 헬퍼 — 단계 간 부드러운 이동 */
+const TRANSIT_DUR = 0.12; // 전체 진행률 중 트랜짓 비율
+function doTransit(p, targetY, targetZ) {
+  if (p < TRANSIT_DUR) {
+    const pp = easeInOut(p / TRANSIT_DUR);
+    gangGroup.position.y = THREE.MathUtils.lerp(stepState.startGangY, targetY, pp);
+    gangGroup.position.z = THREE.MathUtils.lerp(stepState.startGangZ, targetZ, pp);
+    return -1; // 아직 트랜짓 중
+  }
+  return (p - TRANSIT_DUR) / (1 - TRANSIT_DUR); // 리매핑된 진행률 0~1
+}
+
 function processStep(dt) {
   if (animIdx >= animSteps.length) { playing = false; return; }
   const step = animSteps[animIdx];
 
   if (!stepState) {
-    // Initialize step
-    stepState = { phase: 0, t: 0 };
+    // Initialize step — 현재 갱 위치 저장 (부드러운 전환용)
+    stepState = {
+      phase: 0, t: 0,
+      startGangY: gangGroup ? gangGroup.position.y : 0,
+      startGangZ: gangGroup ? gangGroup.position.z : 0,
+    };
     setStatus(step.label);
   }
 
@@ -777,22 +795,23 @@ function processStep(dt) {
       const p = Math.min(stepState.t / dur, 1);
       const faceSeg = step.seg;
       const partSeg = step.partSeg;
-      // 갱 Z: T02 칼날이 파팅 세그먼트에 오도록 (보정 오프셋 반영)
-      if (partSeg) {
-        const segCenterZ = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
-        gangGroup.position.z = segCenterZ - gangGroup.userData.t02TipGangZ;
-      }
+      const { t02OpenY, t02LocalY, t02TipGangZ } = gangGroup.userData;
+      const fpTargetZ = partSeg ? (barGroup.position.z + partSeg.zStart + partSeg.len / 2 - t02TipGangZ) : gangGroup.position.z;
+      const fpTargetY = t02OpenY - t02LocalY;
+      const rp = doTransit(p, fpTargetY, fpTargetZ);
+      if (rp < 0) break; // 트랜짓 중
 
-      animatePartingBlade(p, 0.4);
-      if (p < 0.55) {
-        const glow = Math.min(p / 0.4, 1) * 0.4;
+      animatePartingBlade(rp, 0.4);
+      gangGroup.position.z = fpTargetZ; // Z 고정
+      if (rp < 0.55) {
+        const glow = Math.min(rp / 0.4, 1) * 0.4;
         if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(glow, glow * 0.3, 0);
         if (faceSeg) faceSeg.mesh.material.emissive = new THREE.Color(glow * 0.8, glow * 0.2, 0);
-      } else if (p < 0.75) {
-        const pp = (p - 0.55) / 0.2;
+      } else if (rp < 0.75) {
+        const pp = (rp - 0.55) / 0.2;
         if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0.4*(1-pp), 0.12*(1-pp), 0);
       } else {
-        const pp = (p - 0.75) / 0.25;
+        const pp = (rp - 0.75) / 0.25;
         [faceSeg, partSeg].forEach(s => {
           if (s && s.mesh) {
             s.mesh.position.y = -easeInOut(pp) * 35;
@@ -801,7 +820,7 @@ function processStep(dt) {
           }
         });
       }
-      if (p >= 1) {
+      if (rp >= 1) {
         if (faceSeg && faceSeg.mesh) { faceSeg.mesh.visible = false; faceSeg._fallen = true; }
         if (partSeg && partSeg.mesh) { partSeg.mesh.visible = false; partSeg._fallen = true; }
         nextStep();
@@ -815,26 +834,29 @@ function processStep(dt) {
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
       const { t01TipOffset, t01LocalY } = gangGroup.userData;
-      // 갱 Y: T01(localY=0)이 봉재 중심(Y≈outerR-2) 위치
-      gangGroup.position.y = (curOuterR - 2) - t01LocalY; // t01LocalY=0이므로 outerR-2
-      // T01 팁 월드Z = gangGroup.z + 0 - t01TipOffset
+      const machTargetY = (curOuterR - 2) - t01LocalY;
       const segRightZ = barGroup.position.z + seg.zStart + seg.len;
       const grpAtRight = segRightZ + t01TipOffset;
       const grpAtDeep  = (segRightZ - P.finLen) + t01TipOffset;
       const restZ      = grpAtRight + 10;
 
-      if (p < 0.25) {
-        const pp = p / 0.25;
+      // 트랜짓: 현재 위치 → 보링 시작 위치(Y정렬+Z대기)
+      const rp = doTransit(p, machTargetY, restZ);
+      if (rp < 0) break;
+
+      gangGroup.position.y = machTargetY;
+      if (rp < 0.25) {
+        const pp = rp / 0.25;
         gangGroup.position.z = THREE.MathUtils.lerp(restZ, grpAtRight, easeInOut(pp));
         const glow = pp * 0.15;
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.5, 0);
-      } else if (p < 0.65) {
-        const pp = (p - 0.25) / 0.4;
+      } else if (rp < 0.65) {
+        const pp = (rp - 0.25) / 0.4;
         gangGroup.position.z = THREE.MathUtils.lerp(grpAtRight, grpAtDeep, easeInOut(pp));
         const glow = 0.15 + Math.sin(pp * Math.PI * 6) * 0.15;
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
-      } else if (p < 0.85) {
-        const pp = (p - 0.65) / 0.2;
+      } else if (rp < 0.85) {
+        const pp = (rp - 0.65) / 0.2;
         gangGroup.position.z = THREE.MathUtils.lerp(grpAtDeep, restZ, easeInOut(pp));
         const glow = 0.15 * (1 - pp);
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.4, 0);
@@ -842,7 +864,7 @@ function processStep(dt) {
         gangGroup.position.z = restZ;
       }
 
-      if (p >= 1) {
+      if (rp >= 1) {
         seg.mesh.material.emissive = new THREE.Color(0x000000);
         nextStep();
       }
@@ -854,19 +876,22 @@ function processStep(dt) {
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
       const prodSeg = step.prodSeg;
-      // T02 칼날이 파팅 세그먼트에 오도록 (보정 오프셋 반영)
-      const partSegZ = barGroup.position.z + seg.zStart + seg.len / 2;
-      gangGroup.position.z = partSegZ - gangGroup.userData.t02TipGangZ;
+      const { t02OpenY: pcOpenY, t02LocalY: pcLocalY, t02TipGangZ: pcTipZ } = gangGroup.userData;
+      const pcTargetZ = barGroup.position.z + seg.zStart + seg.len / 2 - pcTipZ;
+      const pcTargetY = pcOpenY - pcLocalY;
+      const rp = doTransit(p, pcTargetY, pcTargetZ);
+      if (rp < 0) break;
 
-      animatePartingBlade(p, 0.35);
-      if (p < 0.5) {
-        const glow = Math.min(p / 0.35, 1) * 0.4;
+      gangGroup.position.z = pcTargetZ;
+      animatePartingBlade(rp, 0.35);
+      if (rp < 0.5) {
+        const glow = Math.min(rp / 0.35, 1) * 0.4;
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.3, 0);
-      } else if (p < 0.65) {
-        const pp = (p - 0.5) / 0.15;
+      } else if (rp < 0.65) {
+        const pp = (rp - 0.5) / 0.15;
         seg.mesh.material.emissive = new THREE.Color(0.4*(1-pp), 0.12*(1-pp), 0);
       } else {
-        const pp = (p - 0.65) / 0.35;
+        const pp = (rp - 0.65) / 0.35;
         [prodSeg, seg].forEach(s => {
           if (s && s.mesh && !s._fallen) {
             s.mesh.position.y = -easeInOut(pp) * 40;
@@ -875,7 +900,7 @@ function processStep(dt) {
           }
         });
       }
-      if (p >= 1) {
+      if (rp >= 1) {
         [prodSeg, seg].forEach(s => { if (s && s.mesh) { s.mesh.visible = false; s._fallen = true; } });
         nextStep();
       }
@@ -887,19 +912,22 @@ function processStep(dt) {
       const p = Math.min(stepState.t / dur, 1);
       const seg = step.seg;
       const marginSeg = step.marginSeg;
-      // T02 칼날이 파팅 세그먼트에 오도록 (보정 오프셋 반영)
-      const alPartSegZ = barGroup.position.z + seg.zStart + seg.len / 2;
-      gangGroup.position.z = alPartSegZ - gangGroup.userData.t02TipGangZ;
+      const { t02OpenY: apOpenY, t02LocalY: apLocalY, t02TipGangZ: apTipZ } = gangGroup.userData;
+      const apTargetZ = barGroup.position.z + seg.zStart + seg.len / 2 - apTipZ;
+      const apTargetY = apOpenY - apLocalY;
+      const rp = doTransit(p, apTargetY, apTargetZ);
+      if (rp < 0) break;
 
-      animatePartingBlade(p, 0.35);
-      if (p < 0.5) {
-        const glow = Math.min(p / 0.35, 1) * 0.4;
+      gangGroup.position.z = apTargetZ;
+      animatePartingBlade(rp, 0.35);
+      if (rp < 0.5) {
+        const glow = Math.min(rp / 0.35, 1) * 0.4;
         seg.mesh.material.emissive = new THREE.Color(glow, glow * 0.3, 0);
-      } else if (p < 0.65) {
-        const pp = (p - 0.5) / 0.15;
+      } else if (rp < 0.65) {
+        const pp = (rp - 0.5) / 0.15;
         seg.mesh.material.emissive = new THREE.Color(0.4*(1-pp), 0.12*(1-pp), 0);
       } else {
-        const pp = (p - 0.65) / 0.35;
+        const pp = (rp - 0.65) / 0.35;
         [seg, marginSeg].forEach(s => {
           if (s && s.mesh && !s._fallen) {
             s.mesh.position.y = -easeInOut(pp) * 40;
@@ -908,7 +936,7 @@ function processStep(dt) {
           }
         });
       }
-      if (p >= 1) {
+      if (rp >= 1) {
         if (seg.mesh) { seg.mesh.visible = false; seg._fallen = true; }
         if (marginSeg && marginSeg.mesh) { marginSeg.mesh.visible = false; marginSeg._fallen = true; }
         nextStep();
@@ -929,12 +957,9 @@ function processStep(dt) {
         const visRightLocal = visSegs.length > 0
           ? Math.max(...visSegs.map(s => s.zStart + s.len)) : 0;
         const barVisRightZ = stepState.startBarZ + visRightLocal;
-        // 갱 Z: T03 핑거가 바 끝에 오도록 (보정 오프셋 반영)
-        // T03 핑거 gang-local Z = t03TipGangZ → gangZ = barEnd - t03TipGangZ
         const { t03TipGangZ } = gangGroup.userData;
         stepState.gripperGrabZ = barVisRightZ - t03TipGangZ;
         stepState.gripperRestZ = barVisRightZ - t03TipGangZ + 5;
-        // 갱 Y: T03(localY=t03LocalY)이 중심(Y=0)에 오려면 gangY = -t03LocalY
         stepState.gangYForT03 = -t03LocalY;
         stepState.phase = 1;
       }
@@ -942,31 +967,34 @@ function processStep(dt) {
       const openFY = curOuterR + 2;
       const closeFY = curOuterR * 0.4;
 
-      // 갱 Y를 T03 정렬 위치로
+      // 트랜짓: 현재 위치 → T03 정렬 + 대기 Z
+      const rp = doTransit(p, stepState.gangYForT03, stepState.gripperRestZ);
+      if (rp < 0) break;
+
       gangGroup.position.y = stepState.gangYForT03;
 
-      if (p < 0.12) {
-        const pp = p / 0.12;
+      if (rp < 0.12) {
+        const pp = rp / 0.12;
         gangGroup.position.z = THREE.MathUtils.lerp(stepState.gripperRestZ, stepState.gripperGrabZ, easeInOut(pp));
         fingerTop.position.y = openFY;
         fingerBot.position.y = -openFY;
-      } else if (p < 0.22) {
+      } else if (rp < 0.22) {
         gangGroup.position.z = stepState.gripperGrabZ;
-        const pp = (p - 0.12) / 0.1;
+        const pp = (rp - 0.12) / 0.1;
         const y = THREE.MathUtils.lerp(openFY, closeFY, easeInOut(pp));
         fingerTop.position.y = y;
         fingerBot.position.y = -y;
-      } else if (p < 0.72) {
+      } else if (rp < 0.72) {
         fingerTop.position.y = closeFY;
         fingerBot.position.y = -closeFY;
-        const pp = (p - 0.22) / 0.5;
+        const pp = (rp - 0.22) / 0.5;
         const offset = easeInOut(pp) * pullDist;
         if (barGroup) barGroup.position.z = stepState.startBarZ + offset;
         gangGroup.position.z = stepState.gripperGrabZ + offset;
-      } else if (p < 0.82) {
+      } else if (rp < 0.82) {
         if (barGroup) barGroup.position.z = stepState.startBarZ + pullDist;
         gangGroup.position.z = stepState.gripperGrabZ + pullDist;
-        const pp = (p - 0.72) / 0.1;
+        const pp = (rp - 0.72) / 0.1;
         const y = THREE.MathUtils.lerp(closeFY, openFY, easeInOut(pp));
         fingerTop.position.y = y;
         fingerBot.position.y = -y;
@@ -974,13 +1002,13 @@ function processStep(dt) {
         if (barGroup) barGroup.position.z = stepState.startBarZ + pullDist;
         fingerTop.position.y = openFY;
         fingerBot.position.y = -openFY;
-        const pp = (p - 0.82) / 0.18;
+        const pp = (rp - 0.82) / 0.18;
         gangGroup.position.z = THREE.MathUtils.lerp(
           stepState.gripperGrabZ + pullDist, stepState.gripperRestZ + pullDist, easeInOut(pp)
         );
       }
 
-      if (p >= 1) {
+      if (rp >= 1) {
         resetGripperFingers();
         nextStep();
       }
