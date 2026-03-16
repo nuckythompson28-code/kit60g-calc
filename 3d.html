@@ -232,12 +232,13 @@ function buildSegments(matLen) {
   push(P.chuckLeft, 'jawGrip', -1);
   push(P.chuck2jaw + P.safetyLen, 'safety', -1);
 
-  // Remaining pieces (residual) — 파팅(왼) → 제품(오) 순서
+  // Remaining pieces (residual) — 파팅(왼) → 제품(오) → 파팅 → 마진
   for (let i = 0; i < r.remainPcs; i++) {
     push(P.tipWidth, 'parting', -2);
     push(P.finLen, 'residual', -2);
   }
   if (r.remainPcs > 0) {
+    push(P.tipWidth, 'parting', -2); // 마진 왼쪽 파팅
     push(P.margin, 'margin', -2);
   }
 
@@ -247,6 +248,7 @@ function buildSegments(matLen) {
       push(P.tipWidth, 'parting', a);
       push(P.finLen, 'product', a);
     }
+    push(P.tipWidth, 'parting', a); // 마진 왼쪽 파팅
     push(P.margin, 'margin', a);
   }
 
