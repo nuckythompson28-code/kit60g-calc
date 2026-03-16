@@ -445,9 +445,9 @@ function buildScene(matLen) {
   const alFingerBot = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), fingerMat);
   alFingerBot.position.set(0, -(outerR + 2), -armLen / 2);
   alGroup.add(alFingerBot);
-  // 조에서 18mm 떨어진 위치에서 대기 (핑거팁이 -armLen/2에 있으므로 보정)
+  // 소재 우측 끝에 바짝 붙여서 대기 (핑거팁이 -armLen/2에 있으므로 보정)
   alGroup.userData = { fingerTop: alFingerTop, fingerBot: alFingerBot, fingerOffset: armLen / 2 };
-  alGroup.position.set(0, 0, 18 + armLen / 2);
+  alGroup.position.set(0, 0, stickoutLen + armLen / 2);
   alGroup.visible = false;
   alGripperMesh = alGroup;
   scene.add(alGripperMesh);
@@ -839,7 +839,7 @@ function processStep(dt) {
         // 핑거가 -Z에 있으므로 그룹 Z = barRightZ + fingerOffset 이면 핑거가 바 끝에 위치
         const fOff = alGripperMesh.userData.fingerOffset || 0;
         stepState.gripperGrabZ = barRightZ + fOff;
-        stepState.gripperRestZ = barRightZ + fOff + 10;
+        stepState.gripperRestZ = barRightZ + fOff + 5;
         stepState.phase = 1;
       }
 
