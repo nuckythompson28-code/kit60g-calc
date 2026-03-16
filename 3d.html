@@ -79,6 +79,11 @@ canvas { display: block; }
     <label>소재길이</label>
     <input id="inMatLen" type="number" value="543" step="1" data-sync="matLen">
     <label>mm</label>
+    <label>외경</label>
+    <input id="inOD" type="number" value="16" step="0.1" style="width:50px">
+    <label>내경</label>
+    <input id="inID" type="number" value="0" step="0.1" style="width:50px">
+    <label>mm</label>
     <button class="btn btn-red" onclick="rebuild()">재생성</button>
     <span style="width:8px"></span>
     <button class="btn btn-green" id="btnPlay" onclick="togglePlay()">▶ 재생</button>
@@ -120,6 +125,7 @@ const P = {
   residual:  _saved.residual  ?? 0
 };
 const BAR_R = 8;
+let curOuterR = BAR_R; // 현재 외경 반지름 (buildScene에서 갱신)
 
 /* ── Calculation ── */
 function calc(p, matLen) {
@@ -269,18 +275,39 @@ function buildScene(matLen) {
 
   const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
 
-  /* Bar group */
+  /* Bar group — 외경/내경 반영 */
   barGroup = new THREE.Group();
-  const segGeo = (len) => new THREE.CylinderGeometry(BAR_R, BAR_R, len, 32);
+  const outerR = parseFloat(document.getElementById('inOD').value) / 2 || BAR_R;
+  const innerR = parseFloat(document.getElementById('inID').value) / 2 || 0;
+  curOuterR = outerR;
+
+  // 튜브 지오메트리 생성 (내경 > 0이면 중공)
+  function makeTubeGeo(len, oR, iR) {
+    if (iR > 0 && iR < oR) {
+      // LatheGeometry로 단면 회전체 생성 (반원형 단면 → 튜브)
+      const shape = new THREE.Shape();
+      const halfL = len / 2;
+      shape.moveTo(iR, -halfL);
+      shape.lineTo(oR, -halfL);
+      shape.lineTo(oR, halfL);
+      shape.lineTo(iR, halfL);
+      shape.lineTo(iR, -halfL);
+      const geo = new THREE.LatheGeometry(
+        shape.getPoints(1).map(p => new THREE.Vector2(p.x, p.y)), 32
+      );
+      return geo;
+    }
+    return new THREE.CylinderGeometry(oR, oR, len, 32);
+  }
 
   segments.forEach((seg, i) => {
     const col = COL[seg.type] || 0xffffff;
     const mat = new THREE.MeshStandardMaterial({
       color: col, metalness: 0.4, roughness: 0.5,
     });
-    const geo = segGeo(seg.len);
+    const geo = makeTubeGeo(seg.len, outerR, innerR);
     const mesh = new THREE.Mesh(geo, mat);
-    // Bar along Z: cylinder default is along Y, so rotate
+    // Bar along Z: cylinder/lathe default is along Y, so rotate
     mesh.rotation.x = Math.PI / 2;
     mesh.position.z = seg.zStart + seg.len / 2;
     mesh.castShadow = true;
@@ -305,7 +332,7 @@ function buildScene(matLen) {
   const jawMat = new THREE.MeshStandardMaterial({ color: COL.chuck, metalness: 0.7, roughness: 0.3 });
 
   // Back plate (척 뒤판)
-  const plateGeo = new THREE.CylinderGeometry(BAR_R * 2.5, BAR_R * 2.5, 8, 32);
+  const plateGeo = new THREE.CylinderGeometry(outerR * 2.5, outerR * 2.5, 8, 32);
   const plate = new THREE.Mesh(plateGeo, jawMat);
   plate.rotation.x = Math.PI / 2;
   plate.position.z = -6;
@@ -315,16 +342,16 @@ function buildScene(matLen) {
   // 3 Jaws (조)
   for (let i = 0; i < 3; i++) {
     const ang = (i * 2 * Math.PI) / 3;
-    const jawGeo = new THREE.BoxGeometry(6, 10, 20);
+    const jawGeo = new THREE.BoxGeometry(outerR * 0.7, outerR * 1.2, 20);
     const jaw = new THREE.Mesh(jawGeo, jawMat);
-    jaw.position.set(Math.cos(ang) * (BAR_R + 3.5), Math.sin(ang) * (BAR_R + 3.5), 3);
+    jaw.position.set(Math.cos(ang) * (outerR + 3.5), Math.sin(ang) * (outerR + 3.5), 3);
     jaw.rotation.z = ang;
     jaw.castShadow = true;
     chuckGroup.add(jaw);
   }
 
   // Outer ring (척 외륜)
-  const ringGeo = new THREE.TorusGeometry(BAR_R * 2.8, 2.5, 16, 32);
+  const ringGeo = new THREE.TorusGeometry(outerR * 2.8, 2.5, 16, 32);
   const ring = new THREE.Mesh(ringGeo, jawMat);
   ring.position.z = -2;
   ring.castShadow = true;
@@ -343,7 +370,7 @@ function buildScene(matLen) {
   const toolMat = new THREE.MeshStandardMaterial({ color: COL.tool, metalness: 0.8, roughness: 0.2 });
   const toolGeo = new THREE.BoxGeometry(2, 30, 1.5);
   toolMesh = new THREE.Mesh(toolGeo, toolMat);
-  toolMesh.position.set(0, BAR_R + 20, stickoutLen / 2);
+  toolMesh.position.set(0, outerR + 20, stickoutLen / 2);
   toolMesh.castShadow = true;
   toolMesh.visible = false;
   scene.add(toolMesh);
@@ -555,7 +582,7 @@ function processStep(dt) {
         const wz = barGroup.position.z + partSeg.zStart + partSeg.len / 2;
         toolMesh.position.z = wz;
       }
-      const startY = BAR_R + 22;
+      const startY = curOuterR + 22;
 
       if (p < 0.4) {
         // 툴 진입 (페이스컷 + 파팅 동시)
@@ -620,7 +647,7 @@ function processStep(dt) {
       const wz = barGroup.position.z + seg.zStart + seg.len / 2;
       toolMesh.visible = true;
       toolMesh.position.z = wz;
-      const startY = BAR_R + 22;
+      const startY = curOuterR + 22;
 
       if (p < 0.35) {
         // 툴 진입
@@ -765,7 +792,7 @@ function animate() {
 
   // Bar spinning
   if (barGroup && barSpinning) {
-    barGroup.rotation.z += dt * 6;
+    barGroup.rotation.z += dt * 12;
   }
 
   // Anim
