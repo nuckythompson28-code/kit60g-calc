@@ -324,8 +324,8 @@ function buildScene(matLen) {
   ring.castShadow = true;
   chuckGroup.add(ring);
 
-  // 척 고정 위치: world z = 0
-  chuckGroup.position.z = 0;
+  // 척 고정 위치: world z = -20 (조가 바이트와 간섭 안되게 왼쪽으로)
+  chuckGroup.position.z = -20;
   scene.add(chuckGroup);
 
   /* Parting Tool */
@@ -544,20 +544,21 @@ function processStep(dt) {
         const pp = (p - 0.75) / 0.25;
         toolMesh.visible = false;
         if (faceSeg && faceSeg.mesh) {
-          faceSeg.mesh.position.y = -pp * 30;
+          faceSeg.mesh.position.y = -easeInOut(pp) * 35;
           faceSeg.mesh.material.transparent = true;
-          faceSeg.mesh.material.opacity = 1 - pp;
+          faceSeg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
         }
         if (partSeg && partSeg.mesh) {
+          partSeg.mesh.position.y = -easeInOut(pp) * 35;
           partSeg.mesh.material.transparent = true;
-          partSeg.mesh.material.opacity = 1 - pp * 0.5;
+          partSeg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
         }
       }
       if (p >= 1) {
         toolMesh.visible = false;
         toolMesh.position.y = startY;
         if (faceSeg && faceSeg.mesh) { faceSeg.mesh.visible = false; faceSeg._fallen = true; }
-        if (partSeg) partSeg.mesh.material.emissive = new THREE.Color(0, 0, 0);
+        if (partSeg && partSeg.mesh) { partSeg.mesh.visible = false; partSeg._fallen = true; }
         nextStep();
       }
       break;
@@ -603,14 +604,19 @@ function processStep(dt) {
         toolMesh.position.y = THREE.MathUtils.lerp(0, startY, easeInOut(pp));
         seg.mesh.material.emissive = new THREE.Color(0.5 * (1-pp), 0.2 * (1-pp), 0);
       } else {
-        // 제품이 아래로 떨어짐
+        // 제품 + 파팅 모두 아래로 떨어짐
         toolMesh.visible = false;
         const pp = (p - 0.65) / 0.35;
         if (prodSeg && prodSeg.mesh && !prodSeg._fallen) {
           prodSeg.mesh.position.y = -easeInOut(pp) * 40;
-          prodSeg.mesh.position.z += pp * 0.1; // 약간 앞으로
+          prodSeg.mesh.position.z += pp * 0.1;
           prodSeg.mesh.material.transparent = true;
           prodSeg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
+        }
+        if (seg && seg.mesh && !seg._fallen) {
+          seg.mesh.position.y = -easeInOut(pp) * 40;
+          seg.mesh.material.transparent = true;
+          seg.mesh.material.opacity = Math.max(0, 1 - pp * 1.2);
         }
       }
 
@@ -618,10 +624,14 @@ function processStep(dt) {
         toolMesh.visible = false;
         toolMesh.position.y = startY;
         seg.mesh.material.emissive = new THREE.Color(0, 0, 0);
-        // 제품 숨기기
+        // 제품 + 파팅 숨기기
         if (prodSeg && prodSeg.mesh) {
           prodSeg.mesh.visible = false;
           prodSeg._fallen = true;
+        }
+        if (seg && seg.mesh) {
+          seg.mesh.visible = false;
+          seg._fallen = true;
         }
         nextStep();
       }
