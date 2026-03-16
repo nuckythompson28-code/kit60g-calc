@@ -197,6 +197,7 @@ let barGroup, chuckGroup, toolMesh;
 let segments = [];      // { mesh, type, zStart, len, cycle }
 let animSteps = [];
 let animIdx = 0, animT = 0, playing = false;
+let initialBarZ = 0;   // 초기 barGroup.position.z (리셋용)
 let speedMul = 1;
 let barSpinning = false;
 let result = null;
@@ -282,57 +283,63 @@ function buildScene(matLen) {
     barGroup.add(mesh);
   });
 
-  // Center bar so chuck is on left
-  barGroup.position.z = -totalLen / 2;
+  // 사이클0 영역 길이 (척에서 돌출되는 부분)
+  const cycle0Segs = segments.filter(s => s.cycle === 0);
+  const stickoutLen = cycle0Segs.reduce((sum, s) => sum + s.len, 0);
+
+  // 봉재 위치: 사이클0 영역만 척(z=0) 우측으로 돌출
+  // bar-local totalLen → world stickoutLen (우측 끝)
+  // bar-local (totalLen - stickoutLen) → world 0 (척 면)
+  initialBarZ = -(totalLen - stickoutLen);
+  barGroup.position.z = initialBarZ;
   scene.add(barGroup);
 
-  /* Chuck */
+  /* Chuck — 고정 위치 z=0 */
   chuckGroup = new THREE.Group();
   const jawMat = new THREE.MeshStandardMaterial({ color: COL.chuck, metalness: 0.7, roughness: 0.3 });
 
-  // Back plate
-  const plateGeo = new THREE.CylinderGeometry(BAR_R * 2.2, BAR_R * 2.2, 6, 32);
+  // Back plate (척 뒤판)
+  const plateGeo = new THREE.CylinderGeometry(BAR_R * 2.5, BAR_R * 2.5, 8, 32);
   const plate = new THREE.Mesh(plateGeo, jawMat);
   plate.rotation.x = Math.PI / 2;
-  plate.position.z = -4;
+  plate.position.z = -6;
   plate.castShadow = true;
   chuckGroup.add(plate);
 
-  // 3 Jaws
+  // 3 Jaws (조)
   for (let i = 0; i < 3; i++) {
     const ang = (i * 2 * Math.PI) / 3;
-    const jawGeo = new THREE.BoxGeometry(5, 8, 16);
+    const jawGeo = new THREE.BoxGeometry(6, 10, 20);
     const jaw = new THREE.Mesh(jawGeo, jawMat);
-    jaw.position.set(Math.cos(ang) * (BAR_R + 3), Math.sin(ang) * (BAR_R + 3), 5);
+    jaw.position.set(Math.cos(ang) * (BAR_R + 3.5), Math.sin(ang) * (BAR_R + 3.5), 3);
     jaw.rotation.z = ang;
     jaw.castShadow = true;
     chuckGroup.add(jaw);
   }
 
-  // Outer ring
-  const ringGeo = new THREE.TorusGeometry(BAR_R * 2.5, 2, 16, 32);
+  // Outer ring (척 외륜)
+  const ringGeo = new THREE.TorusGeometry(BAR_R * 2.8, 2.5, 16, 32);
   const ring = new THREE.Mesh(ringGeo, jawMat);
-  ring.position.z = 3;
+  ring.position.z = -2;
   ring.castShadow = true;
   chuckGroup.add(ring);
 
-  // Position chuck at left end of bar
-  const chuckZ = -totalLen / 2 + P.chuckLeft * 0.5;
-  chuckGroup.position.z = -totalLen / 2 - 1;
+  // 척 고정 위치: world z = 0
+  chuckGroup.position.z = 0;
   scene.add(chuckGroup);
 
   /* Parting Tool */
   const toolMat = new THREE.MeshStandardMaterial({ color: COL.tool, metalness: 0.8, roughness: 0.2 });
   const toolGeo = new THREE.BoxGeometry(2, 30, 1.5);
   toolMesh = new THREE.Mesh(toolGeo, toolMat);
-  toolMesh.position.set(0, BAR_R + 20, totalLen / 2);
+  toolMesh.position.set(0, BAR_R + 20, stickoutLen / 2);
   toolMesh.castShadow = true;
   toolMesh.visible = false;
   scene.add(toolMesh);
 
-  /* Camera */
-  camera.position.set(totalLen * 0.4, totalLen * 0.25, totalLen * 0.6);
-  controls.target.set(0, 0, 0);
+  /* Camera — 가공 영역(척 우측) 포커스 */
+  camera.position.set(stickoutLen * 0.6, stickoutLen * 0.4, stickoutLen * 1.0);
+  controls.target.set(0, 0, stickoutLen * 0.4);
   controls.update();
 
   buildAnimSteps();
@@ -459,12 +466,11 @@ function resetAnim() {
   fallenPieces.forEach(m => scene.remove(m));
   fallenPieces = [];
   if (toolMesh) toolMesh.visible = false;
-  // barGroup + chuckGroup 위치 초기화
-  if (barGroup && result) {
-    const totalLen = segments.reduce((s, seg) => s + seg.len, 0);
-    barGroup.position.z = -totalLen / 2;
-    if (chuckGroup) chuckGroup.position.z = -totalLen / 2 - 1;
+  // barGroup 위치 초기화 (척은 항상 z=0 고정)
+  if (barGroup) {
+    barGroup.position.z = initialBarZ;
   }
+  if (chuckGroup) chuckGroup.position.z = 0;
   setStatus('리셋 완료 – 재생 버튼을 눌러주세요');
 }
 window.resetAnim = resetAnim;
@@ -623,7 +629,7 @@ function processStep(dt) {
     }
 
     case 'alPull': {
-      // 오토링크 인출: 봉재+척이 face쪽(+Z)으로 밀려나옴
+      // 오토링크 인출: 봉재만 +Z 방향으로 전진 (척은 고정)
       const dur = 2.5;
       const p = Math.min(stepState.t / dur, 1);
       const pullDist = result.machLen + P.tipWidth + P.margin;
@@ -631,23 +637,20 @@ function processStep(dt) {
       // 스텝 시작 시 현재 위치 기록
       if (stepState.phase === 0) {
         stepState.startBarZ = barGroup ? barGroup.position.z : 0;
-        stepState.startChuckZ = chuckGroup ? chuckGroup.position.z : 0;
         stepState.phase = 1;
       }
 
       if (p < 0.15) {
         // 척 풀림 대기
       } else if (p < 0.85) {
-        // 봉재+척 이동
+        // 봉재만 전진 (척은 고정)
         const pp = (p - 0.15) / 0.7;
         const offset = easeInOut(pp) * pullDist;
         if (barGroup) barGroup.position.z = stepState.startBarZ + offset;
-        if (chuckGroup) chuckGroup.position.z = stepState.startChuckZ + offset;
       } else {
         // 척 재고정
         const finalOffset = pullDist;
         if (barGroup) barGroup.position.z = stepState.startBarZ + finalOffset;
-        if (chuckGroup) chuckGroup.position.z = stepState.startChuckZ + finalOffset;
       }
 
       if (p >= 1) {
