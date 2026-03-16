@@ -91,6 +91,7 @@ canvas { display: block; }
       <option value="8">초고속</option>
     </select>
   </div>
+  <div id="paramInfo" style="font-size:11px;color:#666;text-align:center;padding:2px 0"></div>
   <div id="status">재생 버튼을 눌러주세요</div>
   <div id="legend"></div>
 </div>
@@ -749,6 +750,8 @@ function animate() {
 
 /* ── Init ── */
 document.getElementById('inMatLen').value = P.matLen;
+document.getElementById('paramInfo').textContent =
+  `완성${P.finLen} | 팁${P.tipWidth} | 척${P.chuckInit} | 안전${P.safetyLen} | 좌한${P.chuckLeft} | 척투조${P.chuck2jaw} | 면취${P.faceCut} | 소재${P.matLen}`;
 buildScene(P.matLen);
 clock.start();
 animate();
